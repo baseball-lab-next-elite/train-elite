@@ -73,16 +73,22 @@
   .metric-card { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .metric-name { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
   .metric-val { font-size: 20px; font-weight: 700; color: #eef; line-height: 1; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  
+  /* 報告フォーム用のグリッドレイアウト（レスポンシブ強化） */
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .form-group { display: flex; flex-direction: column; gap: 5px; }
   .form-group.full { grid-column: 1 / -1; }
   .form-label { font-size: 12px; color: var(--muted); }
   .req { color: var(--accent); font-size: 10px; margin-left: 2px; }
-  .form-input { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 8px; color: #eef; padding: 9px 12px; font-size: 14px; transition: border 0.15s; }
+  .form-input { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 8px; color: #eef; padding: 9px 12px; font-size: 14px; width: 100%; transition: border 0.15s; }
   .form-input:focus { outline: none; border-color: var(--accent2); }
-  .calc-row { background: rgba(232,255,71,0.05); border: 0.5px solid rgba(232,255,71,0.2); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
-  .calc-label { font-size: 12px; color: var(--accent); }
-  .calc-val { font-size: 16px; font-weight: 700; color: var(--accent); }
+  
+  /* 計算結果表示行のレスポンシブ最適化 */
+  .calc-container { display: flex; flex-direction: column; gap: 8px; justify-content: flex-end; }
+  .calc-row { background: rgba(232,255,71,0.05); border: 0.5px solid rgba(232,255,71,0.2); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 40px; }
+  .calc-label { font-size: 12px; color: var(--accent); white-space: nowrap; }
+  .calc-val { font-size: 15px; font-weight: 700; color: var(--accent); text-align: right; }
+  
   .submit-btn { background: var(--accent); color: var(--black); border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 4px; }
   .submit-btn:hover { background: #f5ff80; transform: translateY(-1px); }
   .logout-btn { background: rgba(255, 71, 87, 0.1); color: var(--red); border: 0.5px solid var(--red); border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 16px; text-align: center; }
@@ -93,6 +99,15 @@
   .settings-label { font-size: 14px; color: #ccd; flex: 1; }
   .settings-val { font-size: 13px; color: var(--muted); }
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: var(--black); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  
+  /* スマホ縦画面での入力フォーム崩れを防ぐメディアクエリ */
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    .form-grid { grid-template-columns: 1fr; gap: 10px; }
+    .form-group:not(.full) { grid-column: 1 / -1; }
+    .calc-container { justify-content: flex-start; margin-top: 4px; }
+  }
+  
   @media print {
     body { background: white; color: black; padding: 0; }
     #app { border: none; }
@@ -115,7 +130,7 @@
   </div>
   <div class="form-group">
     <label class="form-label">選手ID</label>
-    <input type="text" class="form-input" id="l-id" placeholder="1">
+    <input type="text" class="form-input" id="l-id" placeholder="7">
   </div>
   <div class="form-group">
     <label class="form-label">パスワード</label>
@@ -247,13 +262,13 @@
           </div>
           <div class="form-group">
             <label class="form-label">体重 (kg)</label>
-            <input type="number" class="form-input" id="f-weight" placeholder="75.0" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-weight" placeholder="72.0" oninput="calcDerived()">
           </div>
           <div class="form-group">
             <label class="form-label">体脂肪率 (%)</label>
-            <input type="number" class="form-input" id="f-bf" placeholder="16.0" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-bf" placeholder="12.5" oninput="calcDerived()">
           </div>
-          <div class="form-group" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="form-group calc-container">
             <div class="calc-row">
               <span class="calc-label">除脂肪体重</span>
               <span class="calc-val" id="c-ffm">-- kg</span>
@@ -265,11 +280,11 @@
           </div>
           <div class="form-group">
             <label class="form-label">バットスピード (km/h)</label>
-            <input type="number" class="form-input" id="f-bat" placeholder="120">
+            <input type="number" class="form-input" id="f-bat" placeholder="152">
           </div>
           <div class="form-group">
             <label class="form-label">プルダウン (km/h)</label>
-            <input type="number" class="form-input" id="f-pull" placeholder="140">
+            <input type="number" class="form-input" id="f-pull" placeholder="135">
           </div>
           <div class="form-group">
             <label class="form-label">ベンチプレス 1RM (kg)</label>
@@ -277,43 +292,43 @@
           </div>
           <div class="form-group">
             <label class="form-label">スクワット 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-s1" placeholder="200">
+            <input type="number" class="form-input" id="f-s1" placeholder="140">
           </div>
           <div class="form-group">
             <label class="form-label">デッドリフト 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-d1" placeholder="265">
+            <input type="number" class="form-input" id="f-d1" placeholder="160">
           </div>
           <div class="form-group">
             <label class="form-label">懸垂 (回)</label>
-            <input type="number" class="form-input" id="f-chin" placeholder="20">
+            <input type="number" class="form-input" id="f-chin" placeholder="15">
           </div>
           <div class="form-group">
             <label class="form-label">ベンチプレス 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-b10" placeholder="80">
+            <input type="number" class="form-input" id="f-b10" placeholder="75">
           </div>
           <div class="form-group">
             <label class="form-label">スクワット 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-s10" placeholder="150">
+            <input type="number" class="form-input" id="f-s10" placeholder="105">
           </div>
           <div class="form-group">
             <label class="form-label">デッドリフト 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-d10" placeholder="200">
+            <input type="number" class="form-input" id="f-d10" placeholder="120">
           </div>
           <div class="form-group">
             <label class="form-label">メディシン バックスロー (m)</label>
-            <input type="number" class="form-input" id="f-med" placeholder="18.5" step="15">
+            <input type="number" class="form-input" id="f-med" placeholder="18.5" step="0.1">
           </div>
           <div class="form-group">
             <label class="form-label">10m走 (秒)</label>
-            <input type="number" class="form-input" id="f-10m" placeholder="1.80" step="1.80">
+            <input type="number" class="form-input" id="f-10m" placeholder="1.62" step="0.01">
           </div>
           <div class="form-group">
             <label class="form-label">30m走 (秒)</label>
-            <input type="number" class="form-input" id="f-30m" placeholder="3.45" step="4.4">
+            <input type="number" class="form-input" id="f-30m" placeholder="3.95" step="0.01">
           </div>
           <div class="form-group">
             <label class="form-label">三段跳び (m)</label>
-            <input type="number" class="form-input" id="f-triple" placeholder="8.00" step="8">
+            <input type="number" class="form-input" id="f-triple" placeholder="9.20" step="0.01">
           </div>
           <div class="form-group full">
             <button class="submit-btn" id="btn-submit" onclick="submitReport()">報告を提出する</button>
