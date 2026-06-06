@@ -1,4 +1,4 @@
-const CACHE_NAME = 'train-elite-v10';
+const CACHE_NAME = 'train-elite-v11';
 const STATIC_ASSETS = [
   'app.html',
   'manifest.json',
