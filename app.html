@@ -242,7 +242,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">各種目の歴代最高データ</div>
+        <div class="card-title" id="profile-grid-title">各種目の歴代最高データ</div>
         <div class="metric-grid" id="metric-grid"></div>
       </div>
     </div>
@@ -368,7 +368,7 @@ let currentUser = null;
 let teamMembers = [];
 let reportsData = [];
 let rankingMode = 'daily'; 
-let selectedPlayerForCoach = null; // 指導者が見ている選手名
+let selectedPlayerForCoach = null; 
 
 const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe','#fd79a8','#fdcb6e','#74b9ff','#55efc4','#e17055','#b2bec3'];
 const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
@@ -419,18 +419,18 @@ function initApp() {
   document.getElementById('sett-val-id').textContent = currentUser.role === '指導者' ? '---' : currentUser.userId;
   document.getElementById('prof-avatar-large').textContent = currentUser.name[0];
   
-  // 指導者/選手の権限切り替えロジック
   if (currentUser.role === '指導者') {
-    document.getElementById('nav-report-btn').style.display = 'none'; // 報告タブを非表示
-    document.getElementById('coach-selector-card').style.display = 'block'; // 選手切り替えドロップダウンを表示
+    document.getElementById('nav-report-btn').style.display = 'none'; 
+    document.getElementById('coach-selector-card').style.display = 'block'; 
+    document.getElementById('profile-grid-title').innerHTML = '各種目の歴代最高データ <span style="color:var(--red); font-size:11px; font-weight:normal; margin-left:6px;">※赤字は30日以上更新なし</span>';
     
-    // ドロップダウンに選手一覧をセット
     const selector = document.getElementById('coach-member-select');
     selector.innerHTML = teamMembers.map(m => `<option value="${m}">${m}</option>`).join('');
     selectedPlayerForCoach = teamMembers[0] || null; 
   } else {
     document.getElementById('nav-report-btn').style.display = 'block';
     document.getElementById('coach-selector-card').style.display = 'none';
+    document.getElementById('profile-grid-title').textContent = '各種目の歴代最高データ';
     selectedPlayerForCoach = null;
   }
   
@@ -440,7 +440,7 @@ function initApp() {
 
 function handleCoachPlayerChange() {
   selectedPlayerForCoach = document.getElementById('coach-member-select').value;
-  updateProfile(); // 個人表の数値を切り替えた選手のものにアップデート
+  updateProfile(); 
 }
 
 function forceLogout() {
@@ -559,7 +559,6 @@ function renderRanking() {
 }
 
 function updateProfile() {
-  // 指導者モードの場合は選択された選手、選手モードの場合はログインユーザーのデータを抽出
   const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
   
   if (!targetName) {
@@ -585,11 +584,37 @@ function updateProfile() {
   
   document.getElementById('prof-weight').textContent = latestWeight;
 
+  // 歴代最高値を返す関数
   const getBest = (key, isTime = false) => {
     if (myReports.length === 0) return null;
     let valid = myReports.filter(r => r[key] !== "" && r[key] !== null && r[key] !== undefined).map(r => parseFloat(r[key])).filter(v => !isNaN(v));
     if (valid.length === 0) return null;
     return isTime ? Math.min(...valid) : Math.max(...valid);
+  };
+
+  // 【追加機能】30日間数値が向上（最高値更新）していないかを判定する関数
+  const isStagnant30Days = (key, isTime = false) => {
+    if (myReports.length === 0) return false;
+    
+    // 1. まずその種目の「歴代最高値」を割り出す
+    let validReports = myReports.filter(r => r[key] !== "" && r[key] !== null && r[key] !== undefined && !isNaN(parseFloat(r[key])));
+    if (validReports.length === 0) return false;
+    let allValues = validReports.map(r => parseFloat(r[key]));
+    let bestVal = isTime ? Math.min(...allValues) : Math.max(...allValues);
+    
+    // 2. 「直近30日以内」の報告データを抽出する
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    let recentReports = validReports.filter(r => new Date(r.date) >= thirtyDaysAgo);
+    
+    // 30日以内に報告データ自体が1件もない場合は停滞とみなす
+    if (recentReports.length === 0) return true;
+    
+    // 3. 直近30日間のデータの中に「歴代最高値と並ぶ、または超えるデータ」があるか確認
+    let hasBestIn30Days = recentReports.some(r => parseFloat(r[key]) === bestVal);
+    
+    // 30日以内に最高値が一度も出ていなければ「停滞（true）」を返す
+    return !hasBestIn30Days;
   };
 
   let bp10 = getBest('b10') || 0;
@@ -639,26 +664,34 @@ function updateProfile() {
   const b_s30m = getBest('s30m', true);
 
   const metrics = [
-    { label: '除脂肪体重 (歴代最高)', val: b_ffm ? b_ffm.toFixed(1) + 'kg' : '--' },
-    { label: '除脂肪指数 (歴代最高)', val: b_ffmi ? b_ffmi.toFixed(1) + '' : '--' },
-    { label: 'ベンチ 10RM (歴代最高)', val: b_b10 ? b_b10 + 'kg' : '--' },
-    { label: 'スクワット 10RM (歴代最高)', val: b_s10 ? b_s10 + 'kg' : '--' },
-    { label: 'デッドリフト 10RM (歴代最高)', val: b_d10 ? b_d10 + 'kg' : '--' },
-    { label: '懸垂 (歴代最高)', val: b_chin ? b_chin + '回' : '--' },
-    { label: 'バットスピード (歴代最高)', val: b_bat ? b_bat + 'km/h' : '--' },
-    { label: 'プルダウン (歴代最高)', val: b_pull ? b_pull + 'km/h' : '--' },
-    { label: 'メディシン投げ (歴代最高)', val: b_med ? b_med + 'm' : '--' },
-    { label: '三段跳び (歴代最高)', val: b_triple ? b_triple + 'm' : '--' },
-    { label: '10m走 (歴代最高)', val: b_s10m ? b_s10m.toFixed(2) + '秒' : '--' },
-    { label: '30m走 (歴代最高)', val: b_s30m ? b_s30m.toFixed(2) + '秒' : '--' }
+    { label: '除脂肪体重', val: b_ffm ? b_ffm.toFixed(1) + 'kg' : '--', stag: isStagnant30Days('ffm') },
+    { label: '除脂肪指数', val: b_ffmi ? b_ffmi.toFixed(1) + '' : '--', stag: isStagnant30Days('ffmi') },
+    { label: 'ベンチ 10RM', val: b_b10 ? b_b10 + 'kg' : '--', stag: isStagnant30Days('b10') },
+    { label: 'スクワット 10RM', val: b_s10 ? b_s10 + 'kg' : '--', stag: isStagnant30Days('s10') },
+    { label: 'デッドリフト 10RM', val: b_d10 ? b_d10 + 'kg' : '--', stag: isStagnant30Days('d10') },
+    { label: '懸垂', val: b_chin ? b_chin + '回' : '--', stag: isStagnant30Days('chin') },
+    { label: 'バットスピード', val: b_bat ? b_bat + 'km/h' : '--', stag: isStagnant30Days('bat') },
+    { label: 'プルダウン', val: b_pull ? b_pull + 'km/h' : '--', stag: isStagnant30Days('pull') },
+    { label: 'メディシン投げ', val: b_med ? b_med + 'm' : '--', stag: isStagnant30Days('med') },
+    { label: '三段跳び', val: b_triple ? b_triple + 'm' : '--', stag: isStagnant30Days('triple') },
+    { label: '10m走', val: b_s10m ? b_s10m.toFixed(2) + '秒' : '--', stag: isStagnant30Days('s10m', true) },
+    { label: '30m走', val: b_s30m ? b_s30m.toFixed(2) + '秒' : '--', stag: isStagnant30Days('s30m', true) }
   ];
   
-  document.getElementById('metric-grid').innerHTML = metrics.map(m => `
-    <div class="metric-card">
-      <div class="metric-name">${m.label}</div>
-      <div class="metric-val">${m.val}</div>
-    </div>
-  `).join('');
+  document.getElementById('metric-grid').innerHTML = metrics.map(m => {
+    // 指導者モード、かつ30日停滞フラグ(stag)がtrueの場合のみ文字を赤字(var(--red))にする
+    const isRed = (currentUser.role === '指導者' && m.stag);
+    const textColor = isRed ? 'var(--red)' : '#eef';
+    const labelColor = isRed ? 'rgba(255, 71, 87, 0.7)' : 'var(--muted)';
+    const borderColor = isRed ? 'rgba(255, 71, 87, 0.2)' : 'var(--border)';
+    
+    return `
+      <div class="metric-card" style="border-color: ${borderColor};">
+        <div class="metric-name" style="color: ${labelColor};">${m.label}${isRed ? ' ⚠' : ''}</div>
+        <div class="metric-val" style="color: ${textColor};">${m.val}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function calcDerived() {
