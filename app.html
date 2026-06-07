@@ -361,7 +361,7 @@
 </div>
 <div id="toast">✓ 報告を送信しました！</div>
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby6SCcgogS4xpnyUKM5UV-B2r8tCwcg1yBKarANt5zSqG9dHxxdkScCx-jNWmippGet/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzSZ8AiSw6mFCXx9uIpyFawZZbBOLxMBIAnu1dc5whCT4hSHuzOI8QV0rit3vSKyH1o/exec';
 
 let currentUser = null;
 let teamMembers = [];
@@ -732,8 +732,7 @@ function renderInlineChart(metricId) {
     return parseFloat((sum / dailyReports.length).toFixed(2));
   });
 
-  const configTarget = (appConfigMap[metricId] && appConfigMap[metricId].target != null) ? appConfigMap[metricId].target : null;
-  const targetVal = configTarget !== null ? configTarget : (metricTargets[metricId] || null);
+  const targetVal = metricTargets[metricId] || null;
   const targetData = dates.map(() => targetVal);
 
   if (myChart) { myChart.destroy(); }
@@ -807,7 +806,76 @@ function calcDerived() {
   } else { document.getElementById('c-ffm').textContent = '-- kg'; document.getElementById('c-ffmi').textContent = '-- '; }
 }
 
+function validateFormInputs(payload) {
+  const fieldNamesMap = {
+    height:'身長', weight:'体重', bf:'体脂肪率', bat:'バットスピード', pull:'プルダウン',
+    b1:'ベンチプレス 1RM', s1:'スクワット 1RM', d1:'デッドリフト 1RM', chin:'懸垂',
+    b10:'ベンチプレス 10RM', s10:'スクワット 10RM', d10:'デッドリフト 10RM',
+    med:'メディシン投げ', s10m:'10m走', s30m:'30m走', triple:'三段跳び'
+  };
+  const hardLimits = {
+    height:  { min: 140, max: 220 },
+    weight:  { min: 40,  max: 180 },
+    bf:      { min: 3,   max: 40  },
+    bat:     { min: 70,  max: 200 },
+    pull:    { min: 60,  max: 200 },
+    b1:      { min: 20,  max: 300 },
+    s1:      { min: 20,  max: 400 },
+    d1:      { min: 20,  max: 450 },
+    chin:    { min: 0,   max: 60  },
+    b10:     { min: 10,  max: 250 },
+    s10:     { min: 10,  max: 300 },
+    d10:     { min: 10,  max: 350 },
+    med:     { min: 3,   max: 30  },
+    s10m:    { min: 1.0, max: 3.0 },
+    s30m:    { min: 3.0, max: 6.5 },
+    triple:  { min: 4,   max: 14  }
+  };
+
+  for (let key in fieldNamesMap) {
+    if (payload[key] === "" || payload[key] === undefined) continue;
+    const val = parseFloat(payload[key]);
+    if (isNaN(val)) continue;
+
+    // スプレのアプリ設定シートの値を優先、なければハードリミットを使用
+    const configMin = (appConfigMap[key] && appConfigMap[key].min != null) ? appConfigMap[key].min : (hardLimits[key] ? hardLimits[key].min : null);
+    const configMax = (appConfigMap[key] && appConfigMap[key].max != null) ? appConfigMap[key].max : (hardLimits[key] ? hardLimits[key].max : null);
+
+    if (configMin !== null && val < configMin) {
+      alert(`【入力エラー】${fieldNamesMap[key]}の値 (${val}) が低すぎます。\n下限値: ${configMin} 以上を入力してください。`);
+      return false;
+    }
+    if (configMax !== null && val > configMax) {
+      alert(`【入力エラー】${fieldNamesMap[key]}の値 (${val}) が高すぎます。\n上限値: ${configMax} 以下を入力してください。`);
+      return false;
+    }
+  }
+  return true;
+}
+
 async function submitReport() {
+  // まずバリデーション
+  const w_pre = parseFloat(document.getElementById('f-weight').value) || "";
+  const bf_pre = parseFloat(document.getElementById('f-bf').value) || "";
+  const h_pre = parseFloat(document.getElementById('f-height').value) || "";
+  const prePayload = {
+    height: h_pre, weight: w_pre, bf: bf_pre,
+    bat: parseFloat(document.getElementById('f-bat').value) || "",
+    pull: parseFloat(document.getElementById('f-pull').value) || "",
+    b1: parseFloat(document.getElementById('f-b1').value) || "",
+    s1: parseFloat(document.getElementById('f-s1').value) || "",
+    d1: parseFloat(document.getElementById('f-d1').value) || "",
+    chin: parseInt(document.getElementById('f-chin').value) || "",
+    b10: parseFloat(document.getElementById('f-b10').value) || "",
+    s10: parseFloat(document.getElementById('f-s10').value) || "",
+    d10: parseFloat(document.getElementById('f-d10').value) || "",
+    med: parseFloat(document.getElementById('f-med').value) || "",
+    s10m: parseFloat(document.getElementById('f-10m').value) || "",
+    s30m: parseFloat(document.getElementById('f-30m').value) || "",
+    triple: parseFloat(document.getElementById('f-triple').value) || ""
+  };
+  if (!validateFormInputs(prePayload)) return;
+
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;
   btn.textContent = '送信中...';
