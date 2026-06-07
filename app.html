@@ -211,8 +211,7 @@
           </select>
         </div>
         <div style="display:flex; gap:6px;">
-          <button class="pdf-btn" onclick="openExportModal()" style="border-color:var(--accent2); color:var(--accent2);">⚙ データ抽出</button>
-          <button class="pdf-btn" onclick="exportPDF()">PDF出力</button>
+          <button class="pdf-btn" onclick="openExportModal()">📄 PDF / CSV</button>
         </div>
       </div>
       <div class="card" style="padding:0; overflow:hidden;">
@@ -274,15 +273,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">身長 (cm)</label>
-            <input type="number" class="form-input" id="f-height" placeholder="175" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-height" placeholder="175.0" oninput="calcDerived()">
           </div>
           <div class="form-group">
             <label class="form-label">体重 (kg)</label>
-            <input type="number" class="form-input" id="f-weight" placeholder="72.0" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-weight" placeholder="75.0" oninput="calcDerived()">
           </div>
           <div class="form-group">
             <label class="form-label">体脂肪率 (%)</label>
-            <input type="number" class="form-input" id="f-bf" placeholder="12.5" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-bf" placeholder="16" oninput="calcDerived()">
           </div>
           <div class="form-group calc-container">
             <div class="calc-row">
@@ -296,11 +295,11 @@
           </div>
           <div class="form-group">
             <label class="form-label">バットスピード (km/h)</label>
-            <input type="number" class="form-input" id="f-bat" placeholder="152">
+            <input type="number" class="form-input" id="f-bat" placeholder="130">
           </div>
           <div class="form-group">
             <label class="form-label">プルダウン (km/h)</label>
-            <input type="number" class="form-input" id="f-pull" placeholder="135">
+            <input type="number" class="form-input" id="f-pull" placeholder="140">
           </div>
           <div class="form-group">
             <label class="form-label">ベンチプレス 1RM (kg)</label>
@@ -308,15 +307,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">スクワット 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-s1" placeholder="140">
+            <input type="number" class="form-input" id="f-s1" placeholder="200">
           </div>
           <div class="form-group">
             <label class="form-label">デッドリフト 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-d1" placeholder="160">
+            <input type="number" class="form-input" id="f-d1" placeholder="250">
           </div>
           <div class="form-group">
             <label class="form-label">懸垂 (回)</label>
-            <input type="number" class="form-input" id="f-chin" placeholder="15">
+            <input type="number" class="form-input" id="f-chin" placeholder="20">
           </div>
           <div class="form-group">
             <label class="form-label">ベンチプレス 10RM (kg)</label>
@@ -324,27 +323,27 @@
           </div>
           <div class="form-group">
             <label class="form-label">スクワット 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-s10" placeholder="105">
+            <input type="number" class="form-input" id="f-s10" placeholder="150">
           </div>
           <div class="form-group">
             <label class="form-label">デッドリフト 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-d10" placeholder="120">
+            <input type="number" class="form-input" id="f-d10" placeholder="185">
           </div>
           <div class="form-group">
             <label class="form-label">メディシン バックスロー (m)</label>
-            <input type="number" class="form-input" id="f-med" placeholder="18.5" step="0.1">
+            <input type="number" class="form-input" id="f-med" placeholder="18.5" step="15.0">
           </div>
           <div class="form-group">
             <label class="form-label">10m走 (秒)</label>
-            <input type="number" class="form-input" id="f-10m" placeholder="1.62" step="0.01">
+            <input type="number" class="form-input" id="f-10m" placeholder="1.62" step="1.80">
           </div>
           <div class="form-group">
             <label class="form-label">30m走 (秒)</label>
-            <input type="number" class="form-input" id="f-30m" placeholder="3.95" step="0.01">
+            <input type="number" class="form-input" id="f-30m" placeholder="3.95" step="4.30">
           </div>
           <div class="form-group">
             <label class="form-label">三段跳び (m)</label>
-            <input type="number" class="form-input" id="f-triple" placeholder="9.20" step="0.01">
+            <input type="number" class="form-input" id="f-triple" placeholder="9.20" step="7.5">
           </div>
           <div class="form-group full">
             <button class="submit-btn" id="btn-submit" onclick="submitReport()">報告を提出する</button>
@@ -377,14 +376,15 @@
 <div class="modal-overlay" id="export-modal">
   <div class="modal-card">
     <div class="modal-header">
-      <span>📥 エクスポート種目の選択</span>
+      <span>📥 出力種目の選択</span>
       <button class="close-modal-btn" onclick="closeExportModal()">✕</button>
     </div>
-    <div style="font-size:12px; color:var(--muted);">CSV出力したい種目にチェックを入れてください。</div>
+    <div style="font-size:12px; color:var(--muted);">出力したい種目にチェックを入れてください。</div>
     <div class="checkbox-grid" id="modal-chk-grid"></div>
     <div class="modal-btn-row">
       <button class="modal-btn-secondary" onclick="closeExportModal()">キャンセル</button>
-      <button class="submit-btn" style="flex:1; margin-top:0;" onclick="executeCsvExport()">CSVをダウンロード</button>
+      <button class="modal-btn-secondary" onclick="executePdfExport()" style="color:var(--accent); border-color:var(--accent);">PDF出力</button>
+      <button class="submit-btn" style="flex:1; margin-top:0;" onclick="executeCsvExport()">CSV出力</button>
     </div>
   </div>
 </div>
@@ -479,8 +479,43 @@ function initApp() {
   }
   
   buildExportCheckboxGrid();
+  updateFormPlaceholders();
   updateDashboard();
   updateProfile();
+}
+
+
+function updateFormPlaceholders() {
+  // inputID -> appConfigMapのキー -> デフォルト値
+  const fieldMap = [
+    { id: 'f-height', key: 'height', def: '目標: 175' },
+    { id: 'f-weight', key: 'weight', def: '目標: 72.0' },
+    { id: 'f-bf',     key: 'bf',     def: '目標: 12.5' },
+    { id: 'f-bat',    key: 'bat',    def: '目標: 130' },
+    { id: 'f-pull',   key: 'pull',   def: '目標: 140' },
+    { id: 'f-b1',     key: 'b1',     def: '目標: 100' },
+    { id: 'f-s1',     key: 's1',     def: '目標: 200' },
+    { id: 'f-d1',     key: 'd1',     def: '目標: 250' },
+    { id: 'f-chin',   key: 'chin',   def: '目標: 20' },
+    { id: 'f-b10',    key: 'b10',    def: '目標: 80' },
+    { id: 'f-s10',    key: 's10',    def: '目標: 150' },
+    { id: 'f-d10',    key: 'd10',    def: '目標: 185' },
+    { id: 'f-med',    key: 'med',    def: '目標: 15' },
+    { id: 'f-10m',    key: 's10m',   def: '目標: 1.80' },
+    { id: 'f-30m',    key: 's30m',   def: '目標: 4.40' },
+    { id: 'f-triple', key: 'triple', def: '目標: 7.5' }
+  ];
+
+  fieldMap.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (!el) return;
+    const config = appConfigMap[f.key];
+    if (config && config.target != null) {
+      el.placeholder = '目標: ' + config.target;
+    } else {
+      el.placeholder = f.def;
+    }
+  });
 }
 
 function handleCoachPlayerChange() {
@@ -1043,6 +1078,56 @@ function executeCsvExport() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  closeExportModal();
+}
+
+
+function executePdfExport() {
+  const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked'));
+  if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
+
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
+  let myReports = reportsData.filter(r => r.name === targetName);
+  if (myReports.length === 0) { alert('出力対象のデータがありません'); return; }
+
+  myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const selectedIds = selectedBoxes.map(b => b.value);
+  const selectedLabels = selectedBoxes.map(b => b.getAttribute('data-label'));
+
+  // 印刷用ウィンドウを生成
+  const printWin = window.open('', '_blank');
+  const rows = myReports.map(r => {
+    const cells = selectedIds.map(id => {
+      const v = r[id];
+      return `<td>${(v !== undefined && v !== null && v !== '') ? v : '-'}</td>`;
+    }).join('');
+    return `<tr><td>${r.date}</td>${cells}</tr>`;
+  }).join('');
+
+  const headerCells = selectedLabels.map(l => `<th>${l}</th>`).join('');
+
+  printWin.document.write(`<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<title>Train Elite - ${targetName}</title>
+<style>
+  body { font-family: sans-serif; font-size: 12px; padding: 20px; }
+  h2 { margin-bottom: 8px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: center; }
+  th { background: #f0f0f0; font-weight: bold; }
+  tr:nth-child(even) { background: #fafafa; }
+</style></head><body>
+<h2>Train Elite — ${targetName} トレーニングデータ</h2>
+<table>
+  <thead><tr><th>日付</th>${headerCells}</tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`);
+
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => { printWin.print(); printWin.close(); }, 300);
   closeExportModal();
 }
 
