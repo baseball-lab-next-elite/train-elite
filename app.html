@@ -361,7 +361,7 @@
 </div>
 <div id="toast">✓ 報告を送信しました！</div>
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbywrMGcXGYOLarbqzZz-yfDi8X98VaRVgIndgrLDKqCsRXWQwylgbTwVdcUVNnfb6Cu/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzSZ8AiSw6mFCXx9uIpyFawZZbBOLxMBIAnu1dc5whCT4hSHuzOI8QV0rit3vSKyH1o/exec';
 
 let currentUser = null;
 let teamMembers = [];
@@ -372,7 +372,7 @@ let selectedPlayerForCoach = null;
 let activeChartMetric = null; 
 let myChart = null;
 let showTeamAvgGlobal = true; 
-let activeChartRange = '30'; // グラフの表示範囲の初期値（30日間）
+let activeChartRange = '30'; 
 
 const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe','#fd79a8','#fdcb6e','#74b9ff','#55efc4','#e17055','#b2bec3'];
 const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
@@ -692,7 +692,6 @@ function handleTeamAvgToggle(metricId) {
   renderInlineChart(metricId);
 }
 
-// 【追加機能】期間セレクトボックスが変更された時の処理
 function handleChartRangeChange(metricId) {
   activeChartRange = document.getElementById(`sel-range-${metricId}`).value;
   renderInlineChart(metricId);
@@ -704,20 +703,17 @@ function renderInlineChart(metricId) {
   if (!targetName || !canvasElement) return;
 
   const ctx = canvasElement.getContext('2d');
-
-  // 表示日数(レンジ)の判定
-  let rangeDays = activeChartRange === 'all' ? 30 : parseInt(activeChartRange);
   
   const dates = [];
   const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
 
   if (activeChartRange === 'all') {
-    // 過去全てのデータログ内にあるユニークな日付をすべて抽出して並べる
-    const allDatesSet = new Set(reportsData.map(r => r.date));
-    dates.push(...Array.from(allDatesSet).sort());
+    const playerReports = reportsData.filter(r => r.name === targetName);
+    const uniqueDates = Array.from(new Set(playerReports.map(r => r.date))).sort();
+    dates.push(...uniqueDates);
     if(dates.length === 0) { dates.push(nowJST.toISOString().split('T')[0]); }
   } else {
-    // 指定された日数分のタイムスタンプを動的に配列化
+    let rangeDays = parseInt(activeChartRange);
     for (let i = rangeDays - 1; i >= 0; i--) {
       const d = new Date(nowJST.getTime() - (i * 24 * 60 * 60 * 1000));
       dates.push(d.toISOString().split('T')[0]);
@@ -750,7 +746,7 @@ function renderInlineChart(metricId) {
       borderWidth: 2,
       tension: 0.1,
       spanGaps: true,
-      pointRadius: rangeDays > 90 ? 1 : 2.5
+      pointRadius: dates.length > 90 ? 1 : 2.5
     }
   ];
 
@@ -821,7 +817,6 @@ async function submitReport() {
   let ffm = ""; let ffmi = "";
   if(w && bf) { ffm = w * (1 - bf/100); if(h) ffmi = ffm / Math.pow(h/100, 2); }
 
-  // 【完全一致の配列マッピング構造】
   const payload = {
     date: document.getElementById('f-date').value,
     name: currentUser.name,
@@ -853,6 +848,7 @@ async function submitReport() {
       body: JSON.stringify({ action: 'report', payload: payload })
     });
     const result = await response.json();
+    console.log('GASレスポンス:', JSON.stringify(result)); // デバッグ用
     
     if(result.success) {
       reportsData.push(payload);
