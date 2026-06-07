@@ -106,6 +106,18 @@
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: var(--black); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
   .toggle-checkbox { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
   .toggle-checkbox input { accent-color: var(--accent2); cursor: pointer; }
+
+  /* エクスポートモーダル */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.active { display: flex; }
+  .modal-card { background: var(--card-bg); border: 0.5px solid var(--border); border-radius: 16px; max-width: 440px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+  .modal-header { font-size: 16px; font-weight: 700; color: var(--accent); border-bottom: 0.5px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .close-modal-btn { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+  .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 240px; overflow-y: auto; padding: 4px; }
+  .chk-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ccd; cursor: pointer; }
+  .chk-item input { accent-color: var(--accent2); cursor: pointer; }
+  .modal-btn-row { display: flex; gap: 10px; margin-top: 8px; }
+  .modal-btn-secondary { background: var(--dark-gray); color: #ccd; border: 0.5px solid var(--border); padding: 10px; border-radius: 8px; flex: 1; font-size: 13px; font-weight: 600; cursor: pointer; }
   @media (max-width: 480px) {
     body { padding: 10px; }
     .form-grid { grid-template-columns: 1fr; gap: 10px; }
@@ -198,7 +210,10 @@
             <option value="ffmi">除脂肪指数</option>
           </select>
         </div>
-        <button class="pdf-btn" onclick="exportPDF()">PDF出力</button>
+        <div style="display:flex; gap:6px;">
+          <button class="pdf-btn" onclick="openExportModal()" style="border-color:var(--accent2); color:var(--accent2);">⚙ データ抽出</button>
+          <button class="pdf-btn" onclick="exportPDF()">PDF出力</button>
+        </div>
       </div>
       <div class="card" style="padding:0; overflow:hidden;">
         <table class="rank-table" id="rank-table">
@@ -359,6 +374,21 @@
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="export-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span>📥 エクスポート種目の選択</span>
+      <button class="close-modal-btn" onclick="closeExportModal()">✕</button>
+    </div>
+    <div style="font-size:12px; color:var(--muted);">CSV出力したい種目にチェックを入れてください。</div>
+    <div class="checkbox-grid" id="modal-chk-grid"></div>
+    <div class="modal-btn-row">
+      <button class="modal-btn-secondary" onclick="closeExportModal()">キャンセル</button>
+      <button class="submit-btn" style="flex:1; margin-top:0;" onclick="executeCsvExport()">CSVをダウンロード</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast">✓ 報告を送信しました！</div>
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzSZ8AiSw6mFCXx9uIpyFawZZbBOLxMBIAnu1dc5whCT4hSHuzOI8QV0rit3vSKyH1o/exec';
@@ -372,7 +402,8 @@ let selectedPlayerForCoach = null;
 let activeChartMetric = null; 
 let myChart = null;
 let showTeamAvgGlobal = true; 
-let activeChartRange = '30'; 
+let activeChartRange = '30';
+let appConfigMap = {};
 
 const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe','#fd79a8','#fdcb6e','#74b9ff','#55efc4','#e17055','#b2bec3'];
 const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
@@ -403,6 +434,7 @@ async function attemptLogin() {
       teamMembers = result.members;
       reportsData = result.reports;
       allBestRecords = result.bestRecords || {};
+      appConfigMap = result.config || {};
       
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
@@ -446,6 +478,7 @@ function initApp() {
     selectedPlayerForCoach = null;
   }
   
+  buildExportCheckboxGrid();
   updateDashboard();
   updateProfile();
 }
@@ -955,6 +988,62 @@ async function submitReport() {
     btn.disabled = false;
     btn.textContent = '報告を提出する';
   }
+}
+
+function buildExportCheckboxGrid() {
+  const items = [
+    { id: 'height', label: '身長' }, { id: 'weight', label: '体重' }, { id: 'bf', label: '体脂肪率' },
+    { id: 'ffm', label: '除脂肪体重' }, { id: 'ffmi', label: '除脂肪指数' }, { id: 'bat', label: 'バットスピード' },
+    { id: 'pull', label: 'プルダウン' }, { id: 'b1', label: 'ベンチ1RM' }, { id: 's1', label: 'スクワット1RM' },
+    { id: 'd1', label: 'デッド1RM' }, { id: 'chin', label: '懸垂' }, { id: 'b10', label: 'ベンチ10RM' },
+    { id: 's10', label: 'スクワット10RM' }, { id: 'd10', label: 'デッド10RM' }, { id: 'med', label: 'メディシン投げ' },
+    { id: 's10m', label: '10m走' }, { id: 's30m', label: '30m走' }, { id: 'triple', label: '三段跳び' }
+  ];
+  const grid = document.getElementById('modal-chk-grid');
+  if (!grid) return;
+  grid.innerHTML = items.map(item => `
+    <label class="chk-item">
+      <input type="checkbox" value="${item.id}" data-label="${item.label}" checked>
+      <span>${item.label}</span>
+    </label>
+  `).join('');
+}
+
+function openExportModal() { document.getElementById('export-modal').classList.add('active'); }
+function closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
+
+function executeCsvExport() {
+  const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked'));
+  if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
+  
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
+  let myReports = reportsData.filter(r => r.name === targetName);
+  if (myReports.length === 0) { alert('エクスポート対象のデータがありません'); return; }
+  
+  myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  let csvHeaders = ['日付', '氏名'];
+  selectedBoxes.forEach(box => csvHeaders.push(box.getAttribute('data-label')));
+  
+  let csvRows = [csvHeaders.join(',')];
+  myReports.forEach(r => {
+    let rowData = [r.date, r.name];
+    selectedBoxes.forEach(box => {
+      let val = r[box.value];
+      rowData.push(val !== undefined && val !== null ? val : '');
+    });
+    csvRows.push(rowData.join(','));
+  });
+  
+  const csvString = '\uFEFF' + csvRows.join('\n');
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `TrainElite_${targetName}_データ抽出.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  closeExportModal();
 }
 
 function exportPDF() { window.print(); }
