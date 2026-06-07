@@ -361,7 +361,7 @@
 </div>
 <div id="toast">✓ 報告を送信しました！</div>
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzSZ8AiSw6mFCXx9uIpyFawZZbBOLxMBIAnu1dc5whCT4hSHuzOI8QV0rit3vSKyH1o/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby6SCcgogS4xpnyUKM5UV-B2r8tCwcg1yBKarANt5zSqG9dHxxdkScCx-jNWmippGet/exec';
 
 let currentUser = null;
 let teamMembers = [];
@@ -546,7 +546,7 @@ function renderRanking() {
   const tbody = document.getElementById('rank-body');
   
   if (ranks.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted);">対象のデータがありません</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted);">対象 of データがありません</td></tr>`;
     return;
   }
 
@@ -732,7 +732,8 @@ function renderInlineChart(metricId) {
     return parseFloat((sum / dailyReports.length).toFixed(2));
   });
 
-  const targetVal = metricTargets[metricId] || null;
+  const configTarget = (appConfigMap[metricId] && appConfigMap[metricId].target != null) ? appConfigMap[metricId].target : null;
+  const targetVal = configTarget !== null ? configTarget : (metricTargets[metricId] || null);
   const targetData = dates.map(() => targetVal);
 
   if (myChart) { myChart.destroy(); }
@@ -848,7 +849,7 @@ async function submitReport() {
       body: JSON.stringify({ action: 'report', payload: payload })
     });
     const result = await response.json();
-    console.log('GASレスポンス:', JSON.stringify(result)); // デバッグ用
+    console.log('GASレスポンス:', JSON.stringify(result)); 
     
     if(result.success) {
       reportsData.push(payload);
