@@ -409,6 +409,11 @@ const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe
 const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
 const eventMap = {bench1rm:'b1',bench10rm:'b10',squat1rm:'s1',squat10rm:'s10',dead1rm:'d1',dead10rm:'d10',pulldown:'pull',batspeed:'bat',chinups:'chin',sprint10:'s10m',sprint30:'s30m',triplejump:'triple',medicine:'med',height:'height',weight:'weight',ffm:'ffm',ffmi:'ffmi'};
 
+const metricTargets = {
+  ffm: 65, ffmi: 22, b1: 100, b10: 80, s1: 140, s10: 110, d1: 160, d10: 130,
+  chin: 20, bat: 150, pull: 140, med: 18.0, s10m: 1.60, s30m: 3.90, triple: 9.50, weight: 75, height: 180
+};
+
 async function attemptLogin() {
   const name = document.getElementById('l-name').value.trim();
   const userId = document.getElementById('l-id').value.trim();
@@ -461,7 +466,7 @@ function initApp() {
   if (currentUser.role === '指導者') {
     document.getElementById('nav-report-btn').style.display = 'none'; 
     document.getElementById('coach-selector-card').style.display = 'block'; 
-    document.getElementById('profile-grid-title').innerHTML = '各種目の歴代最高データ <span style="color:var(--red); font-size:11px; font-weight:normal; margin-left:6px;">※赤字は設定日数以上更新なし</span>';
+    document.getElementById('profile-grid-title').innerHTML = '各種目の歴代最高データ <span style="color:var(--red); font-size:11px; font-weight:normal; margin-left:6px;">※赤字は30日以上更新なし</span>';
     
     const selector = document.getElementById('coach-member-select');
     selector.innerHTML = teamMembers.map(m => `<option value="${m}">${m}</option>`).join('');
@@ -672,7 +677,6 @@ function updateProfile() {
   let sq10 = getBest('s10') || 0;
   let dl10 = getBest('d10') || 0;
   let chin = getBest('chin') || 0;
-
   let totalScore = (bp10 * 1.5625) + (sq10 * 0.8333333) + (dl10 * 0.75) + (chin * 5);
 
   let rankStr = 'D';
@@ -800,6 +804,7 @@ function renderInlineChart(metricId) {
   });
 
   const currentMetricConfig = appConfigMap[metricId] || {};
+  
   const targetVal = (currentMetricConfig && currentMetricConfig.target != null) ? currentMetricConfig.target : null;
   const targetData = dates.map(() => targetVal);
 
@@ -955,7 +960,11 @@ async function submitReport() {
   const payload = {
     date: document.getElementById('f-date').value,
     name: currentUser.name,
-    height: h, weight: w, bf: bf, ffm: ffm, ffmi: ffmi,
+    height: h, 
+    weight: w, 
+    bf: bf, 
+    ffm: ffm, 
+    ffmi: ffmi,
     bat: parseFloat(document.getElementById('f-bat').value) || "",
     pull: parseFloat(document.getElementById('f-pull').value) || "",
     b1: parseFloat(document.getElementById('f-b1').value) || "",
@@ -979,16 +988,10 @@ async function submitReport() {
       body: JSON.stringify({ action: 'report', payload: payload })
     });
     const result = await response.json();
+    console.log('GASレスポンス:', JSON.stringify(result)); 
     
     if(result.success) {
-      let existingIdx = reportsData.findIndex(r => r.name === payload.name && r.date === payload.date);
-      if (existingIdx !== -1) {
-        for (let key in payload) {
-          if (payload[key] !== "") reportsData[existingIdx][key] = payload[key];
-        }
-      } else {
-        reportsData.push(payload);
-      }
+      reportsData.push(payload);
       
       const keys = ['height','weight','bf','ffm','ffmi','bat','pull','b1','s1','d1','chin','b10','s10','d10','med','s10m','s30m','triple'];
       if(!allBestRecords[currentUser.name]) allBestRecords[currentUser.name] = {};
@@ -1047,6 +1050,15 @@ function buildExportCheckboxGrid() {
 function openExportModal() { document.getElementById('export-modal').classList.add('active'); }
 function closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
 
+function formatExportValue(id, val) {
+  if (val === undefined || val === null || val === '') return '';
+  const num = parseFloat(val);
+  if (isNaN(num)) return val;
+  // FFMとFFMIは小数点第1位に丸める
+  if (id === 'ffm' || id === 'ffmi') return num.toFixed(1);
+  return val;
+}
+
 function executeCsvExport() {
   const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked'));
   if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
@@ -1057,15 +1069,16 @@ function executeCsvExport() {
   
   myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
 
+  // CSVの2列目に「氏名」のヘッダーを確実に追加
   let csvHeaders = ['日付', '氏名'];
   selectedBoxes.forEach(box => csvHeaders.push(box.getAttribute('data-label')));
   
   let csvRows = [csvHeaders.join(',')];
   myReports.forEach(r => {
+    // データ行に名前（r.name）をしっかり追加
     let rowData = [r.date, r.name];
     selectedBoxes.forEach(box => {
-      let val = r[box.value];
-      rowData.push(val !== undefined && val !== null ? val : '');
+      rowData.push(formatExportValue(box.value, r[box.value]));
     });
     csvRows.push(rowData.join(','));
   });
@@ -1092,50 +1105,4 @@ function executePdfExport() {
   myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
 
   const selectedIds = selectedBoxes.map(b => b.value);
-  const selectedLabels = selectedBoxes.map(b => b.getAttribute('data-label'));
-
-  const printWin = window.open('', '_blank');
-  const rows = myReports.map(r => {
-    const cells = selectedIds.map(id => {
-      const v = r[id];
-      return `<td>${(v !== undefined && v !== null && v !== '') ? v : '-'}</td>`;
-    }).join('');
-    return `<tr><td>${r.date}</td>${cells}</tr>`;
-  }).join('');
-
-  const headerCells = selectedLabels.map(l => `<th>${l}</th>`).join('');
-
-  printWin.document.write(`<!DOCTYPE html>
-<html lang="ja"><head><meta charset="UTF-8">
-<title>Train Elite - ${targetName}</title>
-<style>
-  body { font-family: sans-serif; font-size: 12px; padding: 20px; }
-  h2 { margin-bottom: 8px; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: center; }
-  th { background: #f0f0f0; font-weight: bold; }
-  tr:nth-child(even) { background: #fafafa; }
-</style></head><body>
-<h2>Train Elite — ${targetName} トレーニングデータ</h2>
-<table>
-  <thead><tr><th>日付</th>${headerCells}</tr></thead>
-  <tbody>${rows}</tbody>
-</table>
-</body></html>`);
-
-  printWin.document.close();
-  printWin.focus();
-  setTimeout(() => { printWin.print(); printWin.close(); }, 300);
-  closeExportModal();
-}
-
-function exportPDF() { window.print(); }
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW登録失敗:', err));
-  });
-}
-</script>
-</body>
-</html>
+  const selectedLabels = selectedBoxes.map(b => b.getAttribute('data-label
