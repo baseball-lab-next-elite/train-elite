@@ -278,15 +278,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">身長 (cm)</label>
-            <input type="number" class="form-input" id="f-height" placeholder="175.0" step="0.1" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-height" placeholder="例: 175.0" step="0.1" oninput="calcDerived()">
           </div>
           <div class="form-group">
             <label class="form-label">体重 (kg)</label>
-            <input type="number" class="form-input" id="f-weight" placeholder="75.0" step="0.1" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-weight" placeholder="例: 75.0" step="0.1" oninput="calcDerived()">
           </div>
           <div class="form-group">
             <label class="form-label">体脂肪率 (%)</label>
-            <input type="number" class="form-input" id="f-bf" placeholder="16" step="0.1" oninput="calcDerived()">
+            <input type="number" class="form-input" id="f-bf" placeholder="目標: 16" step="0.1" oninput="calcDerived()">
           </div>
           <div class="form-group calc-container">
             <div class="calc-row">
@@ -300,55 +300,55 @@
           </div>
           <div class="form-group">
             <label class="form-label">バットスピード (km/h)</label>
-            <input type="number" class="form-input" id="f-bat" placeholder="130" step="0.1">
+            <input type="number" class="form-input" id="f-bat" placeholder="目標: 130" step="0.1">
           </div>
           <div class="form-group">
             <label class="form-label">プルダウン (km/h)</label>
-            <input type="number" class="form-input" id="f-pull" placeholder="140" step="0.1">
+            <input type="number" class="form-input" id="f-pull" placeholder="目標: 140" step="0.1">
           </div>
           <div class="form-group">
             <label class="form-label">ベンチプレス 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-b1" placeholder="100" step="0.5">
+            <input type="number" class="form-input" id="f-b1" placeholder="目標: 100" step="0.5">
           </div>
           <div class="form-group">
             <label class="form-label">スクワット 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-s1" placeholder="200" step="0.5">
+            <input type="number" class="form-input" id="f-s1" placeholder="目標: 200" step="0.5">
           </div>
           <div class="form-group">
             <label class="form-label">デッドリフト 1RM (kg)</label>
-            <input type="number" class="form-input" id="f-d1" placeholder="250" step="0.5">
+            <input type="number" class="form-input" id="f-d1" placeholder="目標: 250" step="0.5">
           </div>
           <div class="form-group">
             <label class="form-label">懸垂 (回)</label>
-            <input type="number" class="form-input" id="f-chin" placeholder="20" step="1">
+            <input type="number" class="form-input" id="f-chin" placeholder="目標: 20" step="1">
           </div>
           <div class="form-group">
             <label class="form-label">ベンチプレス 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-b10" placeholder="75" step="0.5">
+            <input type="number" class="form-input" id="f-b10" placeholder="目標: 75" step="0.5">
           </div>
           <div class="form-group">
             <label class="form-label">スクワット 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-s10" placeholder="150" step="0.5">
+            <input type="number" class="form-input" id="f-s10" placeholder="目標: 150" step="0.5">
           </div>
           <div class="form-group">
             <label class="form-label">デッドリフト 10RM (kg)</label>
-            <input type="number" class="form-input" id="f-d10" placeholder="185" step="0.5">
+            <input type="number" class="form-input" id="f-d10" placeholder="目標: 185" step="0.5">
           </div>
           <div class="form-group">
             <label class="form-label">メディシン バックスロー (m)</label>
-            <input type="number" class="form-input" id="f-med" placeholder="18.5" step="0.1">
+            <input type="number" class="form-input" id="f-med" placeholder="目標: 18.5" step="0.1">
           </div>
           <div class="form-group">
             <label class="form-label">10m走 (秒)</label>
-            <input type="number" class="form-input" id="f-10m" placeholder="1.62" step="0.01">
+            <input type="number" class="form-input" id="f-10m" placeholder="目標: 1.62" step="0.01">
           </div>
           <div class="form-group">
             <label class="form-label">30m走 (秒)</label>
-            <input type="number" class="form-input" id="f-30m" placeholder="3.95" step="0.01">
+            <input type="number" class="form-input" id="f-30m" placeholder="目標: 3.95" step="0.01">
           </div>
           <div class="form-group">
             <label class="form-label">三段跳び (m)</label>
-            <input type="number" class="form-input" id="f-triple" placeholder="9.20" step="0.01">
+            <input type="number" class="form-input" id="f-triple" placeholder="目標: 9.20" step="0.01">
           </div>
           <div class="form-group full">
             <button class="submit-btn" id="btn-submit" onclick="submitReport()">報告を提出する</button>
@@ -486,9 +486,9 @@ function initApp() {
 
 function updateFormPlaceholders() {
   const fieldMap = [
-    { id: 'f-height', key: 'height', def: '目標: 175' },
-    { id: 'f-weight', key: 'weight', def: '目標: 72.0' },
-    { id: 'f-bf',     key: 'bf',     def: '目標: 12.5' },
+    { id: 'f-height', key: 'height', def: '例: 175.0' }, 
+    { id: 'f-weight', key: 'weight', def: '例: 75.0' },  
+    { id: 'f-bf',     key: 'bf',     def: '目標: 16' },
     { id: 'f-bat',    key: 'bat',    def: '目標: 130' },
     { id: 'f-pull',   key: 'pull',   def: '目標: 140' },
     { id: 'f-b1',     key: 'b1',     def: '目標: 100' },
@@ -498,15 +498,21 @@ function updateFormPlaceholders() {
     { id: 'f-b10',    key: 'b10',    def: '目標: 80' },
     { id: 'f-s10',    key: 's10',    def: '目標: 150' },
     { id: 'f-d10',    key: 'd10',    def: '目標: 185' },
-    { id: 'f-med',    key: 'med',    def: '目標: 15' },
-    { id: 'f-10m',    key: 's10m',   def: '目標: 1.80' },
-    { id: 'f-30m',    key: 's30m',   def: '目標: 4.40' },
-    { id: 'f-triple', key: 'triple', def: '目標: 7.5' }
+    { id: 'f-med',    key: 'med',    def: '目標: 18.5' },
+    { id: 'f-10m',    key: 's10m',   def: '目標: 1.62' },
+    { id: 'f-30m',    key: 's30m',   def: '目標: 3.95' },
+    { id: 'f-triple', key: 'triple', def: '目標: 9.20' }
   ];
 
   fieldMap.forEach(f => {
     const el = document.getElementById(f.id);
     if (!el) return;
+    
+    if (f.key === 'height' || f.key === 'weight') {
+      el.placeholder = f.def;
+      return;
+    }
+
     const config = appConfigMap[f.key];
     if (config && config.target != null) {
       el.placeholder = '目標: ' + config.target;
@@ -629,16 +635,16 @@ function renderRanking() {
 
 function getMetricColorClassAndHex(metricId, currentValue) {
   if (currentValue === null || currentValue === undefined || currentValue === '') {
-    return { hex: '#ccd', isDefault: true }; 
+    return { hex: '#ffffff', isDefault: true }; // 【改善】設定なし項目は純白にして沈み込み回避
   }
   const config = appConfigMap[metricId];
   if (!config || config.target == null || config.target === 0) {
-    return { hex: '#eef', isDefault: true }; 
+    return { hex: '#ffffff', isDefault: true }; 
   }
 
   const val = parseFloat(currentValue);
   const target = parseFloat(config.target);
-  if (isNaN(val) || isNaN(target)) return { hex: '#eef', isDefault: true };
+  if (isNaN(val) || isNaN(target)) return { hex: '#ffffff', isDefault: true };
 
   const isTime = (metricId === 's10m' || metricId === 's30m'); 
   if (isTime) {
@@ -835,6 +841,7 @@ function renderInlineChart(metricId) {
   const targetVal = (currentMetricConfig && currentMetricConfig.target != null) ? currentMetricConfig.target : null;
   const targetData = dates.map(() => targetVal);
 
+  // 【視認性改善】プロットされる点の背景色・枠線に純白(#ffffff)や蛍光色を割り当て、黒背景での視認性を爆上げ
   const pointColors = playerData.map(val => {
     if (val === null) return '#47c8ff';
     return getMetricColorClassAndHex(metricId, val).hex;
@@ -853,7 +860,8 @@ function renderInlineChart(metricId) {
       spanGaps: true,
       pointRadius: dates.length > 90 ? 1.5 : 3.5,
       pointBackgroundColor: pointColors, 
-      pointBorderColor: pointColors
+      pointBorderColor: '#ffffff', // 【最重要】プロット点の輪郭線を「純白」に固定し、黒背景と同化するのを100%防止
+      pointBorderWidth: 1.2
     }
   ];
 
@@ -1084,9 +1092,7 @@ function buildExportCheckboxGrid() {
 }
 
 function openExportModal() { document.getElementById('export-modal').classList.add('active'); }
-
-// 【指摘①修正】存在しない.remove()メソッドを、正しい.classList.remove()に完全修復しました
-function closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
+closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
 
 function formatExportValue(id, val) {
   if (val === undefined || val === null || val === '') return '';
