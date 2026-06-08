@@ -109,6 +109,8 @@
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: var(--black); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
   .toggle-checkbox { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
   .toggle-checkbox input { accent-color: var(--accent2); cursor: pointer; }
+
+  /* エクスポートモーダル */
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.active { display: flex; }
   .modal-card { background: var(--card-bg); border: 0.5px solid var(--border); border-radius: 16px; max-width: 440px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
@@ -388,8 +390,8 @@
     </div>
   </div>
 </div>
-<div id="toast">✓ 報告を送信しました！</div>
 
+<div id="toast">✓ 報告を送信しました！</div>
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyEImhn8LKw0mvLE2gnmpvSDRWk4RmVqWft63KY38oQyrUC1YvsHHT-FRUyiB1rK4Ds/exec';
 
@@ -409,7 +411,6 @@ const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe
 const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
 const eventMap = {bench1rm:'b1',bench10rm:'b10',squat1rm:'s1',squat10rm:'s10',dead1rm:'d1',dead10rm:'d10',pulldown:'pull',batspeed:'bat',chinups:'chin',sprint10:'s10m',sprint30:'s30m',triplejump:'triple',medicine:'med',height:'height',weight:'weight',ffm:'ffm',ffmi:'ffmi'};
 
-// 【バグ修正】依存関係のあるカラー判定関数を上部に配置してUndefinedエラーを完全抹殺
 function getMetricColorClassAndHex(metricId, currentValue) {
   if (currentValue === null || currentValue === undefined || currentValue === '') {
     return { hex: '#ffffff', isDefault: true }; 
@@ -565,16 +566,6 @@ function forceLogout() {
 
 function logout() {
   forceLogout();
-}
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('screen-'+id).classList.add('active');
-  document.querySelector(`[data-screen="${id}"]`)?.classList.add('active');
-  if(id==='ranking') renderRanking();
-  if(id==='profile') updateProfile();
-  if(id==='dashboard') updateDashboard();
 }
 
 function updateDashboard() {
@@ -819,10 +810,44 @@ function buildExportCheckboxGrid() {
   grid.innerHTML = items.map(item => `<label class="chk-item"><input type="checkbox" value="${item.id}" data-label="${item.label}" checked><span>${item.label}</span></label>`).join('');
 }
 function openExportModal() { document.getElementById('export-modal').classList.add('active'); }
-// 【バグ修正】通常の関数（function）として正しく再定義し、モーダル閉鎖バグを完全駆除
 function closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
 
 function formatExportValue(id, val) {
   if (val === undefined || val === null || val === '') return '';
   const num = parseFloat(val); if (isNaN(num)) return val;
-  if (id === 'ffm' || id === 'ffmi') return num.toFixed
+  if (id === 'ffm' || id === 'ffmi') return num.toFixed(1);
+  return val;
+}
+function executeCsvExport() {
+  const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked')); if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name; let myReports = reportsData.filter(r => r.name === targetName);
+  if (myReports.length === 0) { alert('エクスポート対象のデータがありません'); return; }
+  myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
+  let csvHeaders = ['日付', '氏名']; selectedBoxes.forEach(box => csvHeaders.push(box.getAttribute('data-label')));
+  let csvRows = [csvHeaders.join(',')];
+  myReports.forEach(r => {
+    let rowData = [r.date, r.name]; selectedBoxes.forEach(box => { rowData.push(formatExportValue(box.value, r[box.value])); }); csvRows.push(rowData.join(','));
+  });
+  const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob); link.setAttribute('download', `TrainElite_${targetName}_データ抽出.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); closeExportModal();
+}
+function executePdfExport() {
+  const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked')); if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name; let myReports = reportsData.filter(r => r.name === targetName);
+  if (myReports.length === 0) { alert('出力対象のデータがありません'); return; }
+  myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
+  const selectedIds = selectedBoxes.map(b => b.value); const selectedLabels = selectedBoxes.map(b => b.getAttribute('data-label'));
+  const printWin = window.open('', '_blank');
+  const rows = myReports.map(r => {
+    const cells = selectedIds.map(id => { const v = formatExportValue(id, r[id]); return `<td>${v !== '' ? v : '-'}</td>`; }).join('');
+    return `<tr><td>${r.date}</td><td>${r.name}</td>${cells}</tr>`;
+  }).join('');
+  const headerCells = selectedLabels.map(l => `<th>${l}</th>`).join('');
+  printWin.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>Train Elite - ${targetName}</title><style>body { font-family: sans-serif; font-size: 12px; padding: 20px; } h2 { margin-bottom: 8px; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: center; } th { background: #f0f0f0; font-weight: bold; } tr:nth-child(even) { background: #fafafa; }</style></head><body><h2>Train Elite — ${targetName} トレーニングデータ</h2><table><thead><tr><th>日付</th><th>氏名</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></body></html>`);
+  printWin.document.close(); printWin.focus(); setTimeout(() => { printWin.print(); printWin.close(); }, 300); closeExportModal();
+}
+function exportPDF() { window.print(); }
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => console.error('SW登録失敗:', err)); }); }
+</script>
+</body>
+</html>
