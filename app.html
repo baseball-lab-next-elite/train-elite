@@ -109,8 +109,6 @@
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: var(--black); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
   .toggle-checkbox { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
   .toggle-checkbox input { accent-color: var(--accent2); cursor: pointer; }
-
-  /* エクスポートモーダル */
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.active { display: flex; }
   .modal-card { background: var(--card-bg); border: 0.5px solid var(--border); border-radius: 16px; max-width: 440px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
@@ -390,8 +388,8 @@
     </div>
   </div>
 </div>
-
 <div id="toast">✓ 報告を送信しました！</div>
+
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyEImhn8LKw0mvLE2gnmpvSDRWk4RmVqWft63KY38oQyrUC1YvsHHT-FRUyiB1rK4Ds/exec';
 
@@ -411,6 +409,7 @@ const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe
 const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
 const eventMap = {bench1rm:'b1',bench10rm:'b10',squat1rm:'s1',squat10rm:'s10',dead1rm:'d1',dead10rm:'d10',pulldown:'pull',batspeed:'bat',chinups:'chin',sprint10:'s10m',sprint30:'s30m',triplejump:'triple',medicine:'med',height:'height',weight:'weight',ffm:'ffm',ffmi:'ffmi'};
 
+// 【完全修復】依存関係のあるすべての関数を下部から参照できるよう、JavaScriptトップレベルに定義
 function getMetricColorClassAndHex(metricId, currentValue) {
   if (currentValue === null || currentValue === undefined || currentValue === '') {
     return { hex: '#ffffff', isDefault: true }; 
@@ -435,6 +434,165 @@ function getMetricColorClassAndHex(metricId, currentValue) {
     if (ratio >= 0.70) return { hex: 'var(--clr-near)' }; 
     return { hex: 'var(--clr-low)' }; 
   }
+}
+
+function renderRanking() {
+  const event = document.getElementById('rank-event').value;
+  const apiKey = eventMap[event];
+  const isTime = event === 'sprint30' || event === 'sprint10';
+  let ranks = [];
+  const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  const todayStr = nowJST.toISOString().split('T')[0];
+  teamMembers.forEach(name => {
+    if (rankingMode === 'daily') {
+      let userReports = reportsData.filter(r => r.name === name && r[apiKey] !== "" && r[apiKey] !== null && r[apiKey] !== undefined);
+      let todayReport = userReports.find(r => r.date === todayStr);
+      if (todayReport) ranks.push({ n: name, v: parseFloat(todayReport[apiKey]) });
+    } else {
+      if (allBestRecords[name] && allBestRecords[name][apiKey] !== undefined) ranks.push({ n: name, v: allBestRecords[name][apiKey] });
+    }
+  });
+  ranks.sort((a,b) => isTime ? a.v-b.v : b.v-a.v);
+  const unit = units[event];
+  const tbody = document.getElementById('rank-body');
+  if (ranks.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted);">対象のデータがありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = ranks.map((row,i) => {
+    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'r-other';
+    const rankText = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    return `<tr>
+      <td><span class="rank-num ${rankClass}">${rankText}</span></td>
+      <td><strong style="color:#eef;">${row.n}</strong></td>
+      <td style="font-size:15px;font-weight:700;color:var(--accent);">${row.v}${unit}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInlineChart(metricId) {
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
+  const canvasElement = document.getElementById(`canvas-${metricId}`); if (!targetName || !canvasElement) return;
+  const ctx = canvasElement.getContext('2d'); const dates = []; const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  if (activeChartRange === 'all') {
+    const playerReports = reportsData.filter(r => r.name === targetName);
+    const uniqueDates = Array.from(new Set(playerReports.map(r => r.date))).sort();
+    dates.push(...uniqueDates); if(dates.length === 0) dates.push(nowJST.toISOString().split('T')[0]);
+  } else {
+    let rangeDays = parseInt(activeChartRange);
+    for (let i = rangeDays - 1; i >= 0; i--) { dates.push(new Date(nowJST.getTime() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]); }
+  }
+  const playerData = dates.map(date => {
+    const r = reportsData.find(r => r.name === targetName && r.date === date);
+    return (r && r[metricId] !== "" && r[metricId] !== undefined) ? parseFloat(r[metricId]) : null;
+  });
+  const teamAvgData = dates.map(date => {
+    const dailyReports = reportsData.filter(r => r.date === date && r[metricId] !== "" && r[metricId] !== undefined);
+    if (dailyReports.length === 0) return null;
+    return parseFloat((dailyReports.reduce((acc, r) => acc + parseFloat(r[metricId]), 0) / dailyReports.length).toFixed(2));
+  });
+  const currentMetricConfig = appConfigMap[metricId] || {};
+  const targetVal = (currentMetricConfig && currentMetricConfig.target != null) ? currentMetricConfig.target : null;
+  const targetData = dates.map(() => targetVal);
+  const pointColors = playerData.map(val => val === null ? '#47c8ff' : getMetricColorClassAndHex(metricId, val).hex);
+  if (myChart) myChart.destroy();
+  myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates.map(d => d.slice(5)),
+      datasets: [
+        { label: '個人', data: playerData, borderColor: '#47c8ff', backgroundColor: 'rgba(71, 200, 255, 0.05)', borderWidth: 2, tension: 0.1, spanGaps: true, pointRadius: dates.length > 90 ? 1.5 : 3.5, pointBackgroundColor: pointColors, pointBorderColor: '#ffffff', pointBorderWidth: 1.2 },
+        ...(showTeamAvgGlobal ? [{ label: '平均', data: teamAvgData, borderColor: '#e8ff47', backgroundColor: 'transparent', borderWidth: 1.2, borderDash: [3, 3], tension: 0.1, spanGaps: true, pointRadius: 0 }] : []),
+        ...(targetVal !== null && targetVal !== 0 ? [{ label: '目標', data: targetData, borderColor: '#ff4757', backgroundColor: 'transparent', borderWidth: 1.2, borderDash: [2, 2], pointRadius: 0, fill: false }] : [])
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#778899', font: { size: 8 }, maxTicksLimit: 8 } }, y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#778899', font: { size: 9 } } } } }
+  });
+}
+
+function updateProfile() {
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
+  if (!targetName) { document.getElementById('prof-name').textContent = '---'; return; }
+  document.getElementById('prof-name').textContent = targetName;
+  document.getElementById('prof-avatar').textContent = targetName[0];
+  let myReports = reportsData.filter(r => r.name === targetName);
+  let playerBests = allBestRecords[targetName] || {};
+  let latestWeight = '--'; let latestHeight = '--';
+  if (myReports.length > 0) {
+    let weightReports = myReports.filter(r => r.weight !== "" && r.weight !== null && r.weight !== undefined);
+    if (weightReports.length > 0) latestWeight = parseFloat(weightReports[weightReports.length - 1].weight).toFixed(1);
+    let heightReports = myReports.filter(r => r.height !== "" && r.height !== null && r.height !== undefined);
+    if (heightReports.length > 0) latestHeight = parseFloat(heightReports[heightReports.length - 1].height).toFixed(0);
+  }
+  document.getElementById('prof-weight').textContent = latestWeight;
+  const getBest = (key) => playerBests[key] || null;
+  const isStagnantCustomDays = (key) => {
+    let bestVal = getBest(key); if (bestVal === null) return false;
+    const itemConfig = appConfigMap[key] || { days: 30 }; const alertLimitDays = itemConfig.days;
+    const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+    const borderDate = new Date(nowJST.getTime() - (alertLimitDays * 24 * 60 * 60 * 1000));
+    let recentReports = myReports.filter(r => new Date(r.date) >= borderDate && r[key] !== "" && r[key] !== null && !isNaN(parseFloat(r[key])));
+    if (recentReports.length === 0) return true; 
+    return !recentReports.some(r => parseFloat(r[key]) === bestVal);
+  };
+  let bp10 = getBest('b10') || 0; let sq10 = getBest('s10') || 0; let dl10 = getBest('d10') || 0; let chin = getBest('chin') || 0;
+  let totalScore = (bp10 * 1.5625) + (sq10 * 0.8333333) + (dl10 * 0.75) + (chin * 5);
+  let rankStr = 'D'; let rankDescStr = '発展途上・トレーニング開始期（1年生レベル）';
+  if (totalScore >= 500) { rankStr = 'S'; rankDescStr = '全国上位・フィジカル突出（プロ・スカウト対象）'; }
+  else if (totalScore >= 420) { rankStr = 'A'; rankDescStr = '強豪校主力クラス（県上位・私学レギュラー級）'; }
+  else if (totalScore >= 340) { rankStr = 'B'; rankDescStr = '県上位レギュラー争い・一般部員の上位層'; }
+  else if (totalScore >= 260) { rankStr = 'C'; rankDescStr = '平均的な高校球児（一般的な公立校レベル）'; }
+  document.getElementById('prof-rank-label').textContent = rankStr;
+  document.getElementById('prof-total-score').textContent = `総合指数: ${totalScore.toFixed(1)}点`;
+  document.getElementById('prof-sub-id').textContent = `身長 ${latestHeight}cm / ${rankDescStr}`;
+  const metrics = [
+    { id: 'ffm', label: '除脂肪体重', val: getBest('ffm') ? getBest('ffm').toFixed(1) + 'kg' : '--', stag: isStagnantCustomDays('ffm'), raw: getBest('ffm') },
+    { id: 'ffmi', label: '除脂肪指数', val: getBest('ffmi') ? getBest('ffmi').toFixed(1) : '--', stag: isStagnantCustomDays('ffmi'), raw: getBest('ffmi') },
+    { id: 'b10', label: 'ベンチ 10RM', val: getBest('b10') ? getBest('b10') + 'kg' : '--', stag: isStagnantCustomDays('b10'), raw: getBest('b10') },
+    { id: 's10', label: 'スクワット 10RM', val: getBest('s10') ? getBest('s10') + 'kg' : '--', stag: isStagnantCustomDays('s10'), raw: getBest('s10') },
+    { id: 'd10', label: 'デッドリフト 10RM', val: getBest('d10') ? getBest('d10') + 'kg' : '--', stag: isStagnantCustomDays('d10'), raw: getBest('d10') },
+    { id: 'chin', label: '懸垂', val: getBest('chin') ? getBest('chin') + '回' : '--', stag: isStagnantCustomDays('chin'), raw: getBest('chin') },
+    { id: 'bat', label: 'バットスピード', val: getBest('bat') ? getBest('bat') + 'km/h' : '--', stag: isStagnantCustomDays('bat'), raw: getBest('bat') },
+    { id: 'pull', label: 'プルダウン', val: getBest('pull') ? getBest('pull') + 'km/h' : '--', stag: isStagnantCustomDays('pull'), raw: getBest('pull') },
+    { id: 'med', label: 'メディシン投げ', val: getBest('med') ? getBest('med') + 'm' : '--', stag: isStagnantCustomDays('med'), raw: getBest('med') },
+    { id: 'triple', label: '三段跳び', val: getBest('triple') ? getBest('triple') + 'm' : '--', stag: isStagnantCustomDays('triple'), raw: getBest('triple') },
+    { id: 's10m', label: '10m走', val: getBest('s10m') ? getBest('s10m').toFixed(2) + '秒' : '--', stag: isStagnantCustomDays('s10m'), raw: getBest('s10m') },
+    { id: 's30m', label: '30m走', val: getBest('s30m') ? getBest('s30m').toFixed(2) + '秒' : '--', stag: isStagnantCustomDays('s30m'), raw: getBest('s30m') }
+  ];
+  document.getElementById('metric-list-container').innerHTML = metrics.map(m => {
+    const isRed = (currentUser.role === '指導者' && m.stag); const labelColor = isRed ? 'rgba(255, 71, 87, 0.7)' : 'var(--muted)';
+    const itemBorderColor = m.id === activeChartMetric ? 'var(--accent2)' : 'transparent'; const arrowIcon = m.id === activeChartMetric ? '▼' : '▶';
+    const valueTextColor = getMetricColorClassAndHex(m.id, m.raw).hex;
+    return `
+      <div class="metric-item-wrapper" style="border-color: ${itemBorderColor};">
+        <div class="metric-row-clickable" onclick="toggleMetricChart('${m.id}')">
+          <div class="metric-label-group">
+            <span class="metric-name" style="font-size: 11px; color: ${labelColor}; font-weight: 600;">${m.label}${isRed ? ' ⚠' : ''}</span>
+            <span class="metric-val" style="font-size: 20px; font-weight: 700; color: ${valueTextColor}; margin-top:2px;">${m.val}</span>
+          </div>
+          <span style="font-size: 11px; color: var(--muted); padding-right: 4px;">${arrowIcon}</span>
+        </div>
+        <div class="inline-chart-container ${m.id === activeChartMetric ? 'active' : ''}" id="chart-area-${m.id}">
+          <div class="inline-chart-header">
+            <select class="chart-filter-select" id="sel-range-${m.id}" onchange="handleChartRangeChange('${m.id}')">
+              <option value="14" ${activeChartRange === '14' ? 'selected' : ''}>2週間</option>
+              <option value="30" ${activeChartRange === '30' ? 'selected' : ''}>1ヶ月</option>
+              <option value="90" ${activeChartRange === '90' ? 'selected' : ''}>3ヶ月</option>
+              <option value="180" ${activeChartRange === '180' ? 'selected' : ''}>半年</option>
+              <option value="365" ${activeChartRange === '365' ? 'selected' : ''}>1年</option>
+              <option value="all" ${activeChartRange === 'all' ? 'selected' : ''}>過去全て</option>
+            </select>
+            <label class="toggle-checkbox" onclick="event.stopPropagation();">
+              <input type="checkbox" id="chk-team-${m.id}" ${showTeamAvgGlobal ? 'checked' : ''} onchange="handleTeamAvgToggle('${m.id}')"> 平均
+            </label>
+          </div>
+          <div style="position:relative; width:100%; height:160px;">
+            <canvas id="canvas-${m.id}"></canvas>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  if (activeChartMetric) renderInlineChart(activeChartMetric);
 }
 
 async function attemptLogin() {
@@ -587,170 +745,23 @@ function updateDashboard() {
   document.getElementById('unreported-list').innerHTML = undoneList.map((m,i)=>mkRow(m,i+doneList.length,false)).join('');
 }
 
-function setRankMode(mode) {
-  rankingMode = mode;
-  document.getElementById('btn-rank-daily').classList.toggle('active', mode === 'daily');
-  document.getElementById('btn-rank-alltime').classList.toggle('active', mode === 'alltime');
-  renderRanking();
-}
-
-function renderRanking() {
-  const event = document.getElementById('rank-event').value;
-  const apiKey = eventMap[event];
-  const isTime = event === 'sprint30' || event === 'sprint10';
-  let ranks = [];
-  const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
-  const todayStr = nowJST.toISOString().split('T')[0];
-  teamMembers.forEach(name => {
-    if (rankingMode === 'daily') {
-      let userReports = reportsData.filter(r => r.name === name && r[apiKey] !== "" && r[apiKey] !== null && r[apiKey] !== undefined);
-      let todayReport = userReports.find(r => r.date === todayStr);
-      if (todayReport) ranks.push({ n: name, v: parseFloat(todayReport[apiKey]) });
-    } else {
-      if (allBestRecords[name] && allBestRecords[name][apiKey] !== undefined) ranks.push({ n: name, v: allBestRecords[name][apiKey] });
-    }
-  });
-  ranks.sort((a,b) => isTime ? a.v-b.v : b.v-a.v);
-  const unit = units[event];
-  const tbody = document.getElementById('rank-body');
-  if (ranks.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted);">対象のデータがありません</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = ranks.map((row,i) => {
-    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'r-other';
-    const rankText = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
-    return `<tr>
-      <td><span class="rank-num ${rankClass}">${rankText}</span></td>
-      <td><strong style="color:#eef;">${row.n}</strong></td>
-      <td style="font-size:15px;font-weight:700;color:var(--accent);">${row.v}${unit}</td>
-    </tr>`;
-  }).join('');
-}
-
-function updateProfile() {
-  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
-  if (!targetName) { document.getElementById('prof-name').textContent = '---'; return; }
-  document.getElementById('prof-name').textContent = targetName;
-  document.getElementById('prof-avatar').textContent = targetName[0];
-  let myReports = reportsData.filter(r => r.name === targetName);
-  let playerBests = allBestRecords[targetName] || {};
-  let latestWeight = '--'; let latestHeight = '--';
-  if (myReports.length > 0) {
-    let weightReports = myReports.filter(r => r.weight !== "" && r.weight !== null && r.weight !== undefined);
-    if (weightReports.length > 0) latestWeight = parseFloat(weightReports[weightReports.length - 1].weight).toFixed(1);
-    let heightReports = myReports.filter(r => r.height !== "" && r.height !== null && r.height !== undefined);
-    if (heightReports.length > 0) latestHeight = parseFloat(heightReports[heightReports.length - 1].height).toFixed(0);
-  }
-  document.getElementById('prof-weight').textContent = latestWeight;
-  const getBest = (key) => playerBests[key] || null;
-  const isStagnantCustomDays = (key) => {
-    let bestVal = getBest(key); if (bestVal === null) return false;
-    const itemConfig = appConfigMap[key] || { days: 30 }; const alertLimitDays = itemConfig.days;
-    const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
-    const borderDate = new Date(nowJST.getTime() - (alertLimitDays * 24 * 60 * 60 * 1000));
-    let recentReports = myReports.filter(r => new Date(r.date) >= borderDate && r[key] !== "" && r[key] !== null && !isNaN(parseFloat(r[key])));
-    if (recentReports.length === 0) return true; 
-    return !recentReports.some(r => parseFloat(r[key]) === bestVal);
-  };
-  let bp10 = getBest('b10') || 0; let sq10 = getBest('s10') || 0; let dl10 = getBest('d10') || 0; let chin = getBest('chin') || 0;
-  let totalScore = (bp10 * 1.5625) + (sq10 * 0.8333333) + (dl10 * 0.75) + (chin * 5);
-  let rankStr = 'D'; let rankDescStr = '発展途上・トレーニング開始期（1年生レベル）';
-  if (totalScore >= 500) { rankStr = 'S'; rankDescStr = '全国上位・フィジカル突出（プロ・スカウト対象）'; }
-  else if (totalScore >= 420) { rankStr = 'A'; rankDescStr = '強豪校主力クラス（県上位・私学レギュラー級）'; }
-  else if (totalScore >= 340) { rankStr = 'B'; rankDescStr = '県上位レギュラー争い・一般部員の上位層'; }
-  else if (totalScore >= 260) { rankStr = 'C'; rankDescStr = '平均的な高校球児（一般的な公立校レベル）'; }
-  document.getElementById('prof-rank-label').textContent = rankStr;
-  document.getElementById('prof-total-score').textContent = `総合指数: ${totalScore.toFixed(1)}点`;
-  document.getElementById('prof-sub-id').textContent = `身長 ${latestHeight}cm / ${rankDescStr}`;
-  const metrics = [
-    { id: 'ffm', label: '除脂肪体重', val: getBest('ffm') ? getBest('ffm').toFixed(1) + 'kg' : '--', stag: isStagnantCustomDays('ffm'), raw: getBest('ffm') },
-    { id: 'ffmi', label: '除脂肪指数', val: getBest('ffmi') ? getBest('ffmi').toFixed(1) : '--', stag: isStagnantCustomDays('ffmi'), raw: getBest('ffmi') },
-    { id: 'b10', label: 'ベンチ 10RM', val: getBest('b10') ? getBest('b10') + 'kg' : '--', stag: isStagnantCustomDays('b10'), raw: getBest('b10') },
-    { id: 's10', label: 'スクワット 10RM', val: getBest('s10') ? getBest('s10') + 'kg' : '--', stag: isStagnantCustomDays('s10'), raw: getBest('s10') },
-    { id: 'd10', label: 'デッドリフト 10RM', val: getBest('d10') ? getBest('d10') + 'kg' : '--', stag: isStagnantCustomDays('d10'), raw: getBest('d10') },
-    { id: 'chin', label: '懸垂', val: getBest('chin') ? getBest('chin') + '回' : '--', stag: isStagnantCustomDays('chin'), raw: getBest('chin') },
-    { id: 'bat', label: 'バットスピード', val: getBest('bat') ? getBest('bat') + 'km/h' : '--', stag: isStagnantCustomDays('bat'), raw: getBest('bat') },
-    { id: 'pull', label: 'プルダウン', val: getBest('pull') ? getBest('pull') + 'km/h' : '--', stag: isStagnantCustomDays('pull'), raw: getBest('pull') },
-    { id: 'med', label: 'メディシン投げ', val: getBest('med') ? getBest('med') + 'm' : '--', stag: isStagnantCustomDays('med'), raw: getBest('med') },
-    { id: 'triple', label: '三段跳び', val: getBest('triple') ? getBest('triple') + 'm' : '--', stag: isStagnantCustomDays('triple'), raw: getBest('triple') },
-    { id: 's10m', label: '10m走', val: getBest('s10m') ? getBest('s10m').toFixed(2) + '秒' : '--', stag: isStagnantCustomDays('s10m'), raw: getBest('s10m') },
-    { id: 's30m', label: '30m走', val: getBest('s30m') ? getBest('s30m').toFixed(2) + '秒' : '--', stag: isStagnantCustomDays('s30m'), raw: getBest('s30m') }
-  ];
-  document.getElementById('metric-list-container').innerHTML = metrics.map(m => {
-    const isRed = (currentUser.role === '指導者' && m.stag); const labelColor = isRed ? 'rgba(255, 71, 87, 0.7)' : 'var(--muted)';
-    const itemBorderColor = m.id === activeChartMetric ? 'var(--accent2)' : 'transparent'; const arrowIcon = m.id === activeChartMetric ? '▼' : '▶';
-    const valueTextColor = getMetricColorClassAndHex(m.id, m.raw).hex;
-    return `
-      <div class="metric-item-wrapper" style="border-color: ${itemBorderColor};">
-        <div class="metric-row-clickable" onclick="toggleMetricChart('${m.id}')">
-          <div class="metric-label-group">
-            <span class="metric-name" style="font-size: 11px; color: ${labelColor}; font-weight: 600;">${m.label}${isRed ? ' ⚠' : ''}</span>
-            <span class="metric-val" style="font-size: 20px; font-weight: 700; color: ${valueTextColor}; margin-top:2px;">${m.val}</span>
-          </div>
-          <span style="font-size: 11px; color: var(--muted); padding-right: 4px;">${arrowIcon}</span>
-        </div>
-        <div class="inline-chart-container ${m.id === activeChartMetric ? 'active' : ''}" id="chart-area-${m.id}">
-          <div class="inline-chart-header">
-            <select class="chart-filter-select" id="sel-range-${m.id}" onchange="handleChartRangeChange('${m.id}')">
-              <option value="14" ${activeChartRange === '14' ? 'selected' : ''}>2週間</option>
-              <option value="30" ${activeChartRange === '30' ? 'selected' : ''}>1ヶ月</option>
-              <option value="90" ${activeChartRange === '90' ? 'selected' : ''}>3ヶ月</option>
-              <option value="180" ${activeChartRange === '180' ? 'selected' : ''}>半年</option>
-              <option value="365" ${activeChartRange === '365' ? 'selected' : ''}>1年</option>
-              <option value="all" ${activeChartRange === 'all' ? 'selected' : ''}>過去全て</option>
-            </select>
-            <label class="toggle-checkbox" onclick="event.stopPropagation();">
-              <input type="checkbox" id="chk-team-${m.id}" ${showTeamAvgGlobal ? 'checked' : ''} onchange="handleTeamAvgToggle('${m.id}')"> 平均
-            </label>
-          </div>
-          <div style="position:relative; width:100%; height:160px;">
-            <canvas id="canvas-${m.id}"></canvas>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-  if (activeChartMetric) renderInlineChart(activeChartMetric);
-}
-
-function renderInlineChart(metricId) {
-  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
-  const canvasElement = document.getElementById(`canvas-${metricId}`); if (!targetName || !canvasElement) return;
-  const ctx = canvasElement.getContext('2d'); const dates = []; const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
-  if (activeChartRange === 'all') {
-    const playerReports = reportsData.filter(r => r.name === targetName);
-    const uniqueDates = Array.from(new Set(playerReports.map(r => r.date))).sort();
-    dates.push(...uniqueDates); if(dates.length === 0) dates.push(nowJST.toISOString().split('T')[0]);
+function toggleMetricChart(metricId) {
+  if (activeChartMetric === metricId) {
+    activeChartMetric = null; 
   } else {
-    let rangeDays = parseInt(activeChartRange);
-    for (let i = rangeDays - 1; i >= 0; i--) { dates.push(new Date(nowJST.getTime() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]); }
+    activeChartMetric = metricId; 
   }
-  const playerData = dates.map(date => {
-    const r = reportsData.find(r => r.name === targetName && r.date === date);
-    return (r && r[metricId] !== "" && r[metricId] !== undefined) ? parseFloat(r[metricId]) : null;
-  });
-  const teamAvgData = dates.map(date => {
-    const dailyReports = reportsData.filter(r => r.date === date && r[metricId] !== "" && r[metricId] !== undefined);
-    if (dailyReports.length === 0) return null;
-    return parseFloat((dailyReports.reduce((acc, r) => acc + parseFloat(r[metricId]), 0) / dailyReports.length).toFixed(2));
-  });
-  const currentMetricConfig = appConfigMap[metricId] || {};
-  const targetVal = (currentMetricConfig && currentMetricConfig.target != null) ? currentMetricConfig.target : null;
-  const targetData = dates.map(() => targetVal);
-  const pointColors = playerData.map(val => val === null ? '#47c8ff' : getMetricColorClassAndHex(metricId, val).hex);
-  if (myChart) myChart.destroy();
-  myChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: dates.map(d => d.slice(5)),
-      datasets: [
-        { label: '個人', data: playerData, borderColor: '#47c8ff', backgroundColor: 'rgba(71, 200, 255, 0.05)', borderWidth: 2, tension: 0.1, spanGaps: true, pointRadius: dates.length > 90 ? 1.5 : 3.5, pointBackgroundColor: pointColors, pointBorderColor: '#ffffff', pointBorderWidth: 1.2 },
-        ...(showTeamAvgGlobal ? [{ label: '平均', data: teamAvgData, borderColor: '#e8ff47', backgroundColor: 'transparent', borderWidth: 1.2, borderDash: [3, 3], tension: 0.1, spanGaps: true, pointRadius: 0 }] : []),
-        ...(targetVal !== null && targetVal !== 0 ? [{ label: '目標', data: targetData, borderColor: '#ff4757', backgroundColor: 'transparent', borderWidth: 1.2, borderDash: [2, 2], pointRadius: 0, fill: false }] : [])
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#778899', font: { size: 8 }, maxTicksLimit: 8 } }, y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#778899', font: { size: 9 } } } } }
-  });
+  updateProfile();
+}
+
+function handleTeamAvgToggle(metricId) {
+  showTeamAvgGlobal = document.getElementById(`chk-team-${metricId}`).checked;
+  renderInlineChart(metricId);
+}
+
+function handleChartRangeChange(metricId) {
+  activeChartRange = document.getElementById(`sel-range-${metricId}`).value;
+  renderInlineChart(metricId);
 }
 
 function calcDerived() {
