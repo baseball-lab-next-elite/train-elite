@@ -70,8 +70,6 @@
   .r2 { color: #C0C0C0; }
   .r3 { color: #CD7F32; }
   .r-other { color: var(--muted); font-size: 15px; }
-  .rank-avg-row { background: rgba(255,255,255,0.03); border-top: 1px dashed rgba(255,255,255,0.15); }
-  .rank-avg-text { font-size: 13px; font-weight: 700; color: #ffffff; padding: 12px; }
   .pdf-btn { background: none; border: 0.5px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
   .pdf-btn:hover { background: rgba(232,255,71,0.1); }
   .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
@@ -121,6 +119,13 @@
   .chk-item input { accent-color: var(--accent2); cursor: pointer; }
   .modal-btn-row { display: flex; gap: 10px; margin-top: 8px; }
   .modal-btn-secondary { background: var(--dark-gray); color: #ccd; border: 0.5px solid var(--border); padding: 10px; border-radius: 8px; flex: 1; font-size: 13px; font-weight: 600; cursor: pointer; }
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    .form-grid { grid-template-columns: 1fr; gap: 10px; }
+    .form-group:not(.full) { grid-column: 1 / -1; }
+    .calc-container { justify-content: flex-start; margin-top: 4px; }
+  }
+  /* コメント・メッセージ */
   .comment-banner { background: rgba(232,255,71,0.07); border: 0.5px solid rgba(232,255,71,0.3); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; }
   .comment-banner:hover { background: rgba(232,255,71,0.12); }
   .comment-banner-icon { font-size: 22px; flex-shrink: 0; }
@@ -138,11 +143,13 @@
   .comment-textarea:focus { outline: none; border-color: var(--accent2); }
   .comment-send-btn { background: var(--accent2); color: var(--black); border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
   .comment-send-btn:hover { opacity: 0.85; }
+  /* 催促モーダル */
   .urge-member-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
   .urge-member-row:last-child { border-bottom: none; }
   .urge-chk { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
   .urge-name { font-size: 14px; color: #ccd; flex: 1; }
   .select-all-btn { font-size: 12px; color: var(--accent2); background: none; border: none; cursor: pointer; padding: 0; }
+  /* 通知許可バナー */
   .notif-banner { background: rgba(71,200,255,0.07); border: 0.5px solid rgba(71,200,255,0.3); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
   .notif-banner-text { flex: 1; font-size: 12px; color: var(--accent2); line-height: 1.5; }
   .notif-enable-btn { background: var(--accent2); color: var(--black); border: none; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
@@ -183,6 +190,7 @@
   </div>
   <div class="main">
     <div class="screen active" id="screen-dashboard">
+      <!-- 選手用：コメント通知バナー（JS制御で表示） -->
       <div id="comment-banner-wrap" style="display:none;">
         <div class="comment-banner" onclick="showScreen('messages')">
           <div class="comment-banner-icon">💬</div>
@@ -193,6 +201,7 @@
           <div class="comment-banner-badge" id="comment-banner-badge">0</div>
         </div>
       </div>
+      <!-- 指導者用：催促ボタン -->
       <div id="urge-btn-wrap" style="display:none;">
         <button class="pdf-btn" style="width:100%;justify-content:center;" onclick="openUrgeModal()">📣 未提出者に催促メッセージを送る</button>
       </div>
@@ -260,7 +269,6 @@
             </tr>
           </thead>
           <tbody id="rank-body"></tbody>
-          <tfoot id="rank-foot"></tfoot>
         </table>
       </div>
     </div>
@@ -269,6 +277,7 @@
         <div class="card-title">🔍 閲覧する選手を選択</div>
         <select class="filter-sel" id="coach-member-select" onchange="handleCoachPlayerChange()" style="width:100%; padding:10px; font-size:15px; font-weight:700; color:var(--accent); border-color:rgba(232,255,71,0.3);"></select>
       </div>
+      <!-- 指導者用コメント送信カード -->
       <div class="card" id="coach-comment-card" style="display:none;">
         <div class="card-title">💬 選手へのコメント</div>
         <div id="coach-comment-history" class="comment-list" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
@@ -433,7 +442,6 @@
         <div style="font-size:13px;color:var(--muted);margin-bottom:12px;" id="notif-status-text">通知の状態を確認中...</div>
         <button class="submit-btn" style="background:var(--accent2);" onclick="requestNotifPermission()" id="notif-settings-btn">通知を許可する</button>
       </div>
-    </div>
   </div>
 </div>
 <div class="modal-overlay" id="urge-modal">
@@ -444,7 +452,7 @@
     </div>
     <div style="font-size:12px;color:var(--muted);">送信する選手を選んでください（欠席・怪我人は外してください）</div>
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div style="font-size:12px;color:var(--muted); id="urge-count-label">0人選択中</div>
+      <div style="font-size:12px;color:var(--muted);" id="urge-count-label">0人選択中</div>
       <button class="select-all-btn" onclick="toggleSelectAllUrge()">すべて選択 / 解除</button>
     </div>
     <div id="urge-member-list" style="max-height:200px;overflow-y:auto;"></div>
@@ -473,9 +481,10 @@
     </div>
   </div>
 </div>
+<div id="toast">✓ 報告を送信しました！</div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyh0gEICp9ATj0WuxldvtiooG1rAcbJSa1xKG1fPz6McJHaigJfijs2HauUsmfpJOBV/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzxKCGAwVOKVZBbpfLR2ihYyDcZyWT25n9GpxoG00TbIMOsd78BvMFPqIOETK4rpzhQ/exec';
 
 let currentUser = null;
 let teamMembers = [];
@@ -488,22 +497,13 @@ let myChart = null;
 let showTeamAvgGlobal = true; 
 let activeChartRange = '30';
 let appConfigMap = {};
-let commentsData = []; 
-let swRegistration = null;
+let commentsData = []; // { id, from, to, body, date, read }
 
-function showScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const target = document.getElementById('screen-' + screenId);
-  if (target) target.classList.add('active');
-  const navBtn = document.querySelector(`.nav-btn[data-screen="${screenId}"]`);
-  if (navBtn) navBtn.classList.add('active');
-  if (screenId === 'ranking') renderRanking();
-  if (screenId === 'profile') { updateProfile(); if (currentUser && currentUser.role === '指導者') renderCoachCommentHistory(); }
-  if (screenId === 'messages') { renderPlayerComments(); markCommentsRead(); }
-  if (screenId === 'dashboard') updateDashboard();
-}
+const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe','#fd79a8','#fdcb6e','#74b9ff','#55efc4','#e17055','#b2bec3'];
+const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
+const eventMap = {bench1rm:'b1',bench10rm:'b10',squat1rm:'s1',squat10rm:'s10',dead1rm:'d1',dead10rm:'d10',pulldown:'pull',batspeed:'bat',chinups:'chin',sprint10:'s10m',sprint30:'s30m',triplejump:'triple',medicine:'med',height:'height',weight:'weight',ffm:'ffm',ffmi:'ffmi'};
 
+// 【完全修復】依存関係のあるすべての関数を下部から参照できるよう、JavaScriptトップレベルに定義
 function getMetricColorClassAndHex(metricId, currentValue) {
   if (currentValue === null || currentValue === undefined || currentValue === '') {
     return { hex: '#ffffff', isDefault: true }; 
@@ -537,7 +537,6 @@ function renderRanking() {
   let ranks = [];
   const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
   const todayStr = nowJST.toISOString().split('T')[0];
-  
   teamMembers.forEach(name => {
     if (rankingMode === 'daily') {
       let userReports = reportsData.filter(r => r.name === name && r[apiKey] !== "" && r[apiKey] !== null && r[apiKey] !== undefined);
@@ -547,18 +546,13 @@ function renderRanking() {
       if (allBestRecords[name] && allBestRecords[name][apiKey] !== undefined) ranks.push({ n: name, v: allBestRecords[name][apiKey] });
     }
   });
-  
   ranks.sort((a,b) => isTime ? a.v-b.v : b.v-a.v);
   const unit = units[event];
   const tbody = document.getElementById('rank-body');
-  const tfoot = document.getElementById('rank-foot');
-  
   if (ranks.length === 0) {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted);">対象のデータがありません</td></tr>`;
-    tfoot.innerHTML = '';
     return;
   }
-  
   tbody.innerHTML = ranks.map((row,i) => {
     const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'r-other';
     const rankText = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
@@ -568,15 +562,6 @@ function renderRanking() {
       <td style="font-size:15px;font-weight:700;color:var(--accent);">${row.v}${unit}</td>
     </tr>`;
   }).join('');
-
-  // チーム平均の算出
-  const sum = ranks.reduce((acc, cur) => acc + cur.v, 0);
-  const avg = (sum / ranks.length).toFixed(2);
-  tfoot.innerHTML = `
-    <tr class="rank-avg-row">
-      <td colspan="2" class="rank-avg-text">👥 チーム平均</td>
-      <td style="font-size:15px;font-weight:700;color:#ffffff;text-align:right;padding-right:12px;">${avg}${unit}</td>
-    </tr>`;
 }
 
 function renderInlineChart(metricId) {
@@ -861,6 +846,7 @@ function updateDashboard() {
     </div>`;
   document.getElementById('done-list').innerHTML = doneList.map((m,i)=>mkRow(m,i,true)).join('');
   document.getElementById('unreported-list').innerHTML = undoneList.map((m,i)=>mkRow(m,i+doneList.length,false)).join('');
+  // 選手用コメントバナー更新
   if (currentUser && currentUser.role !== '指導者') {
     const myUnread = commentsData.filter(c => c.to === currentUser.name && !c.read);
     const wrap = document.getElementById('comment-banner-wrap');
@@ -870,35 +856,60 @@ function updateDashboard() {
   }
 }
 
-async function submitReport() {
-  const w_pre = parseFloat(document.getElementById('f-weight').value) || ""; const bf_pre = parseFloat(document.getElementById('f-bf').value) || ""; const h_pre = parseFloat(document.getElementById('f-height').value) || "";
-  const prePayload = { height: h_pre, weight: w_pre, bf: bf_pre, bat: parseFloat(document.getElementById('f-bat').value) || "", pull: parseFloat(document.getElementById('f-pull').value) || "", b1: parseFloat(document.getElementById('f-b1').value) || "", s1: parseFloat(document.getElementById('f-s1').value) || "", d1: parseFloat(document.getElementById('f-d1').value) || "", chin: parseInt(document.getElementById('f-chin').value) || "", b10: parseFloat(document.getElementById('f-b10').value) || "", s10: parseFloat(document.getElementById('f-s10').value) || "", d10: parseFloat(document.getElementById('f-d10').value) || "", med: parseFloat(document.getElementById('f-med').value) || "", s10m: parseFloat(document.getElementById('f-10m').value) || "", s30m: parseFloat(document.getElementById('f-30m').value) || "", triple: parseFloat(document.getElementById('f-triple').value) || "" };
-  if (!validateFormInputs(prePayload)) return;
-  const btn = document.getElementById('btn-submit'); btn.disabled = true; btn.textContent = '送信中...';
-  let ffm = ""; let ffmi = ""; if(w_pre && bf_pre) { ffm = parseFloat((w_pre * (1 - bf_pre/100)).toFixed(2)); if(h_pre) ffmi = parseFloat((ffm / Math.pow(h_pre/100, 2)).toFixed(2)); }
-  const payload = { date: document.getElementById('f-date').value, name: currentUser.name, height: h_pre, weight: w_pre, bf: bf_pre, ffm: ffm, ffmi: ffmi, bat: prePayload.bat, pull: prePayload.pull, b1: prePayload.b1, s1: prePayload.s1, d1: prePayload.d1, chin: prePayload.chin, b10: prePayload.b10, s10: prePayload.s10, d10: prePayload.d10, med: prePayload.med, s10m: prePayload.s10m, s30m: prePayload.s30m, triple: prePayload.triple };
-  try {
-    const response = await fetch(GAS_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'report', payload: payload }) });
-    const result = await response.json();
-    if(result.success) {
-      let existingIdx = reportsData.findIndex(r => r.name === payload.name && r.date === payload.date);
-      if (existingIdx !== -1) { for (let key in payload) { if (payload[key] !== "") reportsData[existingIdx][key] = payload[key]; } } else { reportsData.push(payload); }
-      const keys = ['height','weight','bf','ffm','ffmi','bat','pull','b1','s1','d1','chin','b10','s10','d10','med','s10m','s30m','triple'];
-      if(!allBestRecords[currentUser.name]) allBestRecords[currentUser.name] = {};
-      keys.forEach(k => {
-        let val = parseFloat(payload[k]); if(!isNaN(val)) {
-          let currentBest = allBestRecords[currentUser.name][k];
-          if(currentBest === undefined) { allBestRecords[currentUser.name][k] = val; } 
-          else { if(k==='s10m'||k==='s30m') { if(val < currentBest) allBestRecords[currentUser.name][k] = val; } else { if(val > currentBest) allBestRecords[currentUser.name][k] = val; } }
-        }
-      });
-      updateDashboard(); showToast('✓ 報告を送信しました！');
-      document.querySelectorAll('#report-form input:not(#f-name):not(#f-date)').forEach(i => i.value = '');
-      document.getElementById('c-ffm').textContent = '-- kg'; document.getElementById('c-ffmi').textContent = '-- '; showScreen('dashboard');
-    } else { alert(result.message); }
-  } catch (error) { alert('送信に失敗しました。'); } finally { btn.disabled = false; btn.textContent = '報告を提出する'; }
+function toggleMetricChart(metricId) {
+  if (activeChartMetric === metricId) {
+    activeChartMetric = null; 
+  } else {
+    activeChartMetric = metricId; 
+  }
+  updateProfile();
 }
 
+function handleTeamAvgToggle(metricId) {
+  showTeamAvgGlobal = document.getElementById(`chk-team-${metricId}`).checked;
+  renderInlineChart(metricId);
+}
+
+function handleChartRangeChange(metricId) {
+  activeChartRange = document.getElementById(`sel-range-${metricId}`).value;
+  renderInlineChart(metricId);
+}
+
+function calcDerived() {
+  const w = parseFloat(document.getElementById('f-weight').value); const bf = parseFloat(document.getElementById('f-bf').value); const h = parseFloat(document.getElementById('f-height').value);
+  if(w && bf) {
+    const ffm = w * (1 - bf/100); document.getElementById('c-ffm').textContent = ffm.toFixed(2) + ' kg';
+    if(h) document.getElementById('c-ffmi').textContent = (ffm / Math.pow(h/100, 2)).toFixed(2) + ' ';
+  } else { document.getElementById('c-ffm').textContent = '-- kg'; document.getElementById('c-ffmi').textContent = '-- '; }
+}
+
+function validateFormInputs(payload) {
+  const fieldNamesMap = { height:'身長', weight:'体重', bf:'体脂肪率', bat:'バットスピード', pull:'プルダウン', b1:'ベンチプレス 1RM', s1:'スクワット 1RM', d1:'デッドリフト 1RM', chin:'懸垂', b10:'ベンチプレス 10RM', s10:'スクワット 10RM', d10:'デッドリフト 10RM', med:'メディシン投げ', s10m:'10m走', s30m:'30m走', triple:'三段跳び' };
+  const hardLimits = { height: {min:140,max:220}, weight: {min:40,max:180}, bf: {min:3,max:40}, bat: {min:70,max:200}, pull: {min:60,max:200}, b1: {min:20,max:300}, s1: {min:20,max:400}, d1: {min:20,max:450}, chin: {min:0,max:60}, b10: {min:10,max:250}, s10: {min:10,max:300}, d10: {min:10,max:350}, med: {min:3,max:30}, s10m: {min:1.0,max:3.0}, s30m: {min:3.0,max:6.5}, triple: {min:4,max:14} };
+  for (let key in fieldNamesMap) {
+    if (payload[key] === "" || payload[key] === undefined) continue;
+    const val = parseFloat(payload[key]); if (isNaN(val)) continue;
+    const configMin = (appConfigMap[key] && appConfigMap[key].min != null) ? appConfigMap[key].min : (hardLimits[key] ? hardLimits[key].min : null);
+    const configMax = (appConfigMap[key] && appConfigMap[key].max != null) ? appConfigMap[key].max : (hardLimits[key] ? hardLimits[key].max : null);
+    if (configMin !== null && val < configMin) { alert(`【入力エラー】${fieldNamesMap[key]}の値 (${val}) が低すぎます。\n下限値: ${configMin} 以上を入力してください。`); return false; }
+    if (configMax !== null && val > configMax) { alert(`【入力エラー】${fieldNamesMap[key]}の値 (${val}) が高すぎます。\n上限値: ${configMax} 以下を入力してください。`); return false; }
+  }
+  return true;
+}
+
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const target = document.getElementById('screen-' + screenId);
+  if (target) target.classList.add('active');
+  const navBtn = document.querySelector(`.nav-btn[data-screen="${screenId}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  if (screenId === 'ranking') renderRanking();
+  if (screenId === 'profile') { updateProfile(); if (currentUser && currentUser.role === '指導者') renderCoachCommentHistory(); }
+  if (screenId === 'messages') { renderPlayerComments(); markCommentsRead(); }
+}
+
+// ========== コメント機能 ==========
 async function loadComments() {
   try {
     const res = await fetch(GAS_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
@@ -973,6 +984,7 @@ async function markCommentsRead() {
   } catch(e) {}
 }
 
+// ========== 催促メッセージ ==========
 function openUrgeModal() {
   const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
   const todayStr = nowJST.toISOString().split('T')[0];
@@ -990,8 +1002,7 @@ function openUrgeModal() {
 function closeUrgeModal() { document.getElementById('urge-modal').classList.remove('active'); }
 function updateUrgeCount() {
   const n = document.querySelectorAll('#urge-member-list input:checked').length;
-  const lbl = document.getElementById('urge-count-label');
-  if (lbl) lbl.textContent = `${n}人選択中`;
+  document.getElementById('urge-count-label').textContent = `${n}人選択中`;
 }
 function toggleSelectAllUrge() {
   const boxes = document.querySelectorAll('#urge-member-list input');
@@ -1024,11 +1035,14 @@ async function sendUrgeMessages() {
   btn.disabled = false; btn.textContent = '送信する';
 }
 
+// ========== プッシュ通知 ==========
+let swRegistration = null;
 function initNotifications() {
   updateNotifStatusUI();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => { swRegistration = reg; });
   }
+  // 指導者：毎日21時のリマインダーをスケジュール
   if (currentUser && currentUser.role === '指導者') scheduleCoachReminder();
 }
 function updateNotifStatusUI() {
@@ -1058,6 +1072,7 @@ async function requestNotifPermission() {
   if (perm === 'granted') showToast('通知を許可しました');
 }
 function sendPushToPlayer(name, title, body) {
+  // Service Workerを通じたローカル通知（同端末のみ。クロスデバイスにはサーバー側VAPID対応が必要）
   if (Notification.permission === 'granted' && swRegistration) {
     swRegistration.showNotification(title, { body, icon: 'icon.png', badge: 'icon.png', tag: `msg-${name}` });
   }
@@ -1073,12 +1088,48 @@ function scheduleCoachReminder() {
     if (swRegistration) {
       swRegistration.showNotification('Prospect Forge', { body: '今日のトレーニング状況をご確認ください', icon: 'icon.png', tag: 'coach-reminder' });
     }
-    scheduleCoachReminder(); 
+    scheduleCoachReminder(); // 翌日も
   }, ms);
 }
 
 function showToast(msg) {
   const toast = document.getElementById('toast'); toast.textContent = msg; toast.style.opacity = 1; setTimeout(()=>{ toast.style.opacity = 0; }, 2500);
+}
+
+function setRankMode(mode) {
+  rankingMode = mode;
+  document.getElementById('btn-rank-daily').classList.toggle('active', mode === 'daily');
+  document.getElementById('btn-rank-alltime').classList.toggle('active', mode === 'alltime');
+  renderRanking();
+}
+
+async function submitReport() {
+  const w_pre = parseFloat(document.getElementById('f-weight').value) || ""; const bf_pre = parseFloat(document.getElementById('f-bf').value) || ""; const h_pre = parseFloat(document.getElementById('f-height').value) || "";
+  const prePayload = { height: h_pre, weight: w_pre, bf: bf_pre, bat: parseFloat(document.getElementById('f-bat').value) || "", pull: parseFloat(document.getElementById('f-pull').value) || "", b1: parseFloat(document.getElementById('f-b1').value) || "", s1: parseFloat(document.getElementById('f-s1').value) || "", d1: parseFloat(document.getElementById('f-d1').value) || "", chin: parseInt(document.getElementById('f-chin').value) || "", b10: parseFloat(document.getElementById('f-b10').value) || "", s10: parseFloat(document.getElementById('f-s10').value) || "", d10: parseFloat(document.getElementById('f-d10').value) || "", med: parseFloat(document.getElementById('f-med').value) || "", s10m: parseFloat(document.getElementById('f-10m').value) || "", s30m: parseFloat(document.getElementById('f-30m').value) || "", triple: parseFloat(document.getElementById('f-triple').value) || "" };
+  if (!validateFormInputs(prePayload)) return;
+  const btn = document.getElementById('btn-submit'); btn.disabled = true; btn.textContent = '送信中...';
+  let ffm = ""; let ffmi = ""; if(w_pre && bf_pre) { ffm = parseFloat((w_pre * (1 - bf_pre/100)).toFixed(2)); if(h_pre) ffmi = parseFloat((ffm / Math.pow(h_pre/100, 2)).toFixed(2)); }
+  const payload = { date: document.getElementById('f-date').value, name: currentUser.name, height: h_pre, weight: w_pre, bf: bf_pre, ffm: ffm, ffmi: ffmi, bat: prePayload.bat, pull: prePayload.pull, b1: prePayload.b1, s1: prePayload.s1, d1: prePayload.d1, chin: prePayload.chin, b10: prePayload.b10, s10: prePayload.s10, d10: prePayload.d10, med: prePayload.med, s10m: prePayload.s10m, s30m: prePayload.s30m, triple: prePayload.triple };
+  try {
+    const response = await fetch(GAS_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'report', payload: payload }) });
+    const result = await response.json();
+    if(result.success) {
+      let existingIdx = reportsData.findIndex(r => r.name === payload.name && r.date === payload.date);
+      if (existingIdx !== -1) { for (let key in payload) { if (payload[key] !== "") reportsData[existingIdx][key] = payload[key]; } } else { reportsData.push(payload); }
+      const keys = ['height','weight','bf','ffm','ffmi','bat','pull','b1','s1','d1','chin','b10','s10','d10','med','s10m','s30m','triple'];
+      if(!allBestRecords[currentUser.name]) allBestRecords[currentUser.name] = {};
+      keys.forEach(k => {
+        let val = parseFloat(payload[k]); if(!isNaN(val)) {
+          let currentBest = allBestRecords[currentUser.name][k];
+          if(currentBest === undefined) { allBestRecords[currentUser.name][k] = val; } 
+          else { if(k==='s10m'||k==='s30m') { if(val < currentBest) allBestRecords[currentUser.name][k] = val; } else { if(val > currentBest) allBestRecords[currentUser.name][k] = val; } }
+        }
+      });
+      updateDashboard(); const toast = document.getElementById('toast'); toast.style.opacity = 1; setTimeout(()=>{ toast.style.opacity = 0; }, 2500);
+      document.querySelectorAll('#report-form input:not(#f-name):not(#f-date)').forEach(i => i.value = '');
+      document.getElementById('c-ffm').textContent = '-- kg'; document.getElementById('c-ffmi').textContent = '-- '; showScreen('dashboard');
+    } else { alert(result.message); }
+  } catch (error) { alert('送信に失敗しました。'); } finally { btn.disabled = false; btn.textContent = '報告を提出する'; }
 }
 
 function buildExportCheckboxGrid() {
@@ -1092,66 +1143,38 @@ function closeExportModal() { document.getElementById('export-modal').classList.
 function formatExportValue(id, val) {
   if (val === undefined || val === null || val === '') return '';
   const num = parseFloat(val); if (isNaN(num)) return val;
-  if (id === 'ffm' || id === 'ffmi') return num.toFixed(2);
+  if (id === 'ffm' || id === 'ffmi') return num.toFixed(1);
   return val;
 }
-
 function executeCsvExport() {
   const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked')); if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
   const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name; let myReports = reportsData.filter(r => r.name === targetName);
   if (myReports.length === 0) { alert('エクスポート対象のデータがありません'); return; }
-  
   myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
   let csvHeaders = ['日付', '氏名']; selectedBoxes.forEach(box => csvHeaders.push(box.getAttribute('data-label')));
   let csvRows = [csvHeaders.join(',')];
-  
   myReports.forEach(r => {
     let rowData = [r.date, r.name]; selectedBoxes.forEach(box => { rowData.push(formatExportValue(box.value, r[box.value])); }); csvRows.push(rowData.join(','));
   });
-
-  // 【新機能】CSVデータの最下部に種目別の「チーム全体平均」行を追加
-  let avgRowData = ['チーム平均', 'ALL'];
-  selectedBoxes.forEach(box => {
-    const validReports = reportsData.filter(r => r[box.value] !== "" && r[box.value] !== null && r[box.value] !== undefined);
-    if(validReports.length === 0) { avgRowData.push('-'); }
-    else {
-      const sum = validReports.reduce((acc, cur) => acc + parseFloat(cur[box.value]), 0);
-      avgRowData.push((sum / validReports.length).toFixed(2));
-    }
-  });
-  csvRows.push(avgRowData.join(','));
-  
   const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a');
   link.href = URL.createObjectURL(blob); link.setAttribute('download', `ForgeProspect_${targetName}_データ抽出.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); closeExportModal();
 }
-
 function executePdfExport() {
   const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked')); if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
   const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name; let myReports = reportsData.filter(r => r.name === targetName);
   if (myReports.length === 0) { alert('出力対象のデータがありません'); return; }
-
   myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
   const selectedIds = selectedBoxes.map(b => b.value); const selectedLabels = selectedBoxes.map(b => b.getAttribute('data-label'));
-  
-  // 【新機能】PDF用：種目別の「チーム平均」を計算してヘッダー行サブテキストとして埋め込み
-  const avgSubCells = selectedIds.map(id => {
-    const validReports = reportsData.filter(r => r[id] !== "" && r[id] !== null && r[id] !== undefined);
-    const avgVal = validReports.length ? (validReports.reduce((acc, cur) => acc + parseFloat(cur[id]), 0) / validReports.length).toFixed(2) : '-';
-    return `<th class="avg-sub-th">平均: ${avgVal}</th>`;
-  }).join('');
-
   const printWin = window.open('', '_blank');
   const rows = myReports.map(r => {
     const cells = selectedIds.map(id => { const v = formatExportValue(id, r[id]); return `<td>${v !== '' ? v : '-'}</td>`; }).join('');
     return `<tr><td>${r.date}</td><td>${r.name}</td>${cells}</tr>`;
   }).join('');
-
   const headerCells = selectedLabels.map(l => `<th>${l}</th>`).join('');
-
-  printWin.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>Prospect Forge - ${targetName}</title><style>body { font-family: sans-serif; font-size: 11px; padding: 20px; } h2 { margin-bottom: 4px; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 5px 6px; text-align: center; } th { background: #f0f0f0; font-weight: bold; } .avg-sub-th { font-size: 9px; font-weight: normal; color: #555; background: #fafafa; } tr:nth-child(even) { background: #fafafa; }</style></head><body><h2>Prospect Forge — ${targetName} トレーニングデータ</h2><table><thead><tr><th>日付</th><th>氏名</th>${headerCells}</tr><tr><th colspan="2" style="background:#fafafa; font-size:9px;">👥 全体ベンチマーク</th>${avgSubCells}</tr></thead><tbody>${rows}</tbody></table></body></html>`);
+  printWin.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>Prospect Forge - ${targetName}</title><style>body { font-family: sans-serif; font-size: 12px; padding: 20px; } h2 { margin-bottom: 8px; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: center; } th { background: #f0f0f0; font-weight: bold; } tr:nth-child(even) { background: #fafafa; }</style></head><body><h2>Prospect Forge — ${targetName} トレーニングデータ</h2><table><thead><tr><th>日付</th><th>氏名</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></body></html>`);
   printWin.document.close(); printWin.focus(); setTimeout(() => { printWin.print(); printWin.close(); }, 300); closeExportModal();
 }
-
+function exportPDF() { window.print(); }
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(reg => { swRegistration = reg; }).catch(err => console.error('SW登録失敗:', err)); }); }
 </script>
 </body>
