@@ -1,4 +1,4 @@
-const CACHE_NAME = 'train-elite-v35';
+const CACHE_NAME = 'prospect-forge-v2';
 const STATIC_ASSETS = [
   'app.html',
   'manifest.json',

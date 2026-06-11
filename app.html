@@ -484,7 +484,7 @@
 <div id="toast">✓ 報告を送信しました！</div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzxKCGAwVOKVZBbpfLR2ihYyDcZyWT25n9GpxoG00TbIMOsd78BvMFPqIOETK4rpzhQ/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzQrWvn9RiUjbPc4BeQEvgTwPVjH24EhSt-diWzQ85QL05FDv87AqhS7iU13WrTDdV4/exec';
 
 let currentUser = null;
 let teamMembers = [];
@@ -699,15 +699,19 @@ async function attemptLogin() {
     const response = await fetch(GAS_URL, {
       method: 'POST',
       mode: 'cors',
+      redirect: 'follow',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action: 'login', name: name, userId: userId, password: password })
     });
-    const result = await response.json();
+    const text = await response.text();
+    let result;
+    try { result = JSON.parse(text); }
+    catch(e) { alert('サーバーの応答が不正です。GASのデプロイ設定（アクセス：全員）を確認してください。\n\n応答:' + text.slice(0,200)); return; }
     
     if(result.success) {
       currentUser = result.user;
-      teamMembers = result.members;
-      reportsData = result.reports;
+      teamMembers = result.members || [];
+      reportsData = result.reports || [];
       allBestRecords = result.bestRecords || {};
       appConfigMap = result.config || {};
       
@@ -716,10 +720,10 @@ async function attemptLogin() {
       
       initApp();
     } else {
-      alert(result.message);
+      alert(result.message || result.error || 'ログインに失敗しました');
     }
   } catch (error) {
-    alert('通信に失敗しました。認証情報の確認、またはGASのデプロイ状況を確認してください。');
+    alert('通信に失敗しました。GASのデプロイURL・アクセス設定を確認してください。\n\n' + error.message);
     console.error(error);
   }
 }
@@ -912,15 +916,21 @@ function showScreen(screenId) {
 // ========== コメント機能 ==========
 async function loadComments() {
   try {
-    const res = await fetch(GAS_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'getComments', name: currentUser.name, role: currentUser.role }) });
-    const result = await res.json();
-    if (result.success) {
-      commentsData = result.comments || [];
-      updateDashboard();
-      if (currentUser.role === '指導者') renderCoachCommentHistory();
+    const url = GAS_URL + '?action=getComments&name=' + encodeURIComponent(currentUser.name) + '&role=' + encodeURIComponent(currentUser.role);
+    const res = await fetch(url, { method:'GET', mode:'cors' });
+    const raw = await res.json();
+    // GASは配列 or {success,comments} どちらでも対応
+    if (Array.isArray(raw)) {
+      commentsData = raw;
+    } else if (raw.success) {
+      commentsData = raw.comments || [];
+    } else {
+      commentsData = [];
     }
+    updateDashboard();
+    if (currentUser.role === '指導者') renderCoachCommentHistory();
   } catch(e) { console.warn('コメント取得失敗:', e); }
+}
 }
 
 async function sendComment() {
@@ -1113,7 +1123,7 @@ async function submitReport() {
   try {
     const response = await fetch(GAS_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'report', payload: payload }) });
     const result = await response.json();
-    if(result.success) {
+    if(result.ok || result.success) {
       let existingIdx = reportsData.findIndex(r => r.name === payload.name && r.date === payload.date);
       if (existingIdx !== -1) { for (let key in payload) { if (payload[key] !== "") reportsData[existingIdx][key] = payload[key]; } } else { reportsData.push(payload); }
       const keys = ['height','weight','bf','ffm','ffmi','bat','pull','b1','s1','d1','chin','b10','s10','d10','med','s10m','s30m','triple'];
