@@ -1,8 +1,8 @@
 {
-  "name": "Train Elite",
-  "short_name": "TrainElite",
+  "name": "Prospect Forge",
+  "short_name": "ProspectForge",
   "description": "チームトレーニング管理システム",
-  "start_url": "./app.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
