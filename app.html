@@ -384,19 +384,19 @@
           </div>
           <div class="form-group">
             <label class="form-label">メディシン バックスロー (m)</label>
-            <input type="number" class="form-input" id="f-med" placeholder="目標: 18.5" step="0.1">
+            <input type="number" class="form-input" id="f-med" placeholder="目標: 17" step="0.1">
           </div>
           <div class="form-group">
             <label class="form-label">10m走 (秒)</label>
-            <input type="number" class="form-input" id="f-10m" placeholder="目標: 1.62" step="0.01">
+            <input type="number" class="form-input" id="f-10m" placeholder="目標: 1.80" step="0.01">
           </div>
           <div class="form-group">
             <label class="form-label">30m走 (秒)</label>
-            <input type="number" class="form-input" id="f-30m" placeholder="目標: 3.95" step="0.01">
+            <input type="number" class="form-input" id="f-30m" placeholder="目標: 4.40" step="0.01">
           </div>
           <div class="form-group">
             <label class="form-label">三段跳び (m)</label>
-            <input type="number" class="form-input" id="f-triple" placeholder="目標: 9.20" step="0.01">
+            <input type="number" class="form-input" id="f-triple" placeholder="目標: 7.5" step="0.01">
           </div>
           <div class="form-group full">
             <button class="submit-btn" id="btn-submit" onclick="submitReport()">報告を提出する</button>
@@ -484,7 +484,7 @@
 <div id="toast">✓ 報告を送信しました！</div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbysn03kw5zoiUFJEFDeOTMFUsXOXT2xpK5kdldbaQK3a7KGrHoPcepTS4dY8gF3n4Pw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzko6fmOFNvoroNDDfHPVwA95kcsH4fgobShUWHEPpMF5YYrDvgddEOhTYZ1C0h8pbU/exec';
 
 let currentUser = null;
 let teamMembers = [];
@@ -723,6 +723,7 @@ async function attemptLogin() {
 
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      if(btn) { btn.disabled = false; btn.textContent = 'ログイン'; }
       initApp();
 
       // ② 画面表示後にバックグラウンドでデータ取得
@@ -814,10 +815,10 @@ function updateFormPlaceholders() {
     { id: 'f-b10',    key: 'b10',    def: '目標: 80' },
     { id: 'f-s10',    key: 's10',    def: '目標: 150' },
     { id: 'f-d10',    key: 'd10',    def: '目標: 185' },
-    { id: 'f-med',    key: 'med',    def: '目標: 18.5' },
-    { id: 'f-10m',    key: 's10m',   def: '目標: 1.62' },
-    { id: 'f-30m',    key: 's30m',   def: '目標: 3.95' },
-    { id: 'f-triple', key: 'triple', def: '目標: 9.20' }
+    { id: 'f-med',    key: 'med',    def: '目標: 17' },
+    { id: 'f-10m',    key: 's10m',   def: '目標: 1.80' },
+    { id: 'f-30m',    key: 's30m',   def: '目標: 4.40' },
+    { id: 'f-triple', key: 'triple', def: '目標: 7.5' }
   ];
   fieldMap.forEach(f => {
     const el = document.getElementById(f.id);
