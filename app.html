@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Prospect Forge</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prospect Forge">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon_large.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --black: #000000;
+    --dark-gray: #121212;
+    --card-bg: #1e1e1e;
+    --accent: #e8ff47;
+    --accent2: #47c8ff;
+    --muted: #8899aa;
+    --border: rgba(255,255,255,0.08);
+    --red: #ff4757;
+    --green: #2ed573;
+    --orange: #ffa502;
+    --clr-achieved: #e8ff47;
+    --clr-near: #00f0ff;
+    --clr-low: #7090ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+  body { background: var(--black); color: #ccd; font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; padding: 20px; }
+  #login-screen { max-width: 400px; margin: 80px auto; background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 16px; padding: 30px; display: flex; flex-direction: column; gap: 16px; }
+  .login-title { font-size: 20px; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 10px; }
+  #app { display: none; background: var(--black); min-height: 640px; border-radius: 16px; overflow: hidden; flex-direction: column; border: 0.5px solid rgba(255,255,255,0.12); }
+  .hdr { background: var(--dark-gray); border-bottom: 0.5px solid var(--border); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .hdr-logo { font-size: 16px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+  .hdr-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; max-width: 50%; overflow: hidden; }
+  .hdr-username-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--black); flex-shrink: 0; }
+  .nav { background: var(--dark-gray); border-bottom: 0.5px solid var(--border); display: flex; padding: 0 16px; gap: 2px; overflow-x: auto; }
+  .nav-btn { padding: 12px 16px; font-size: 13px; color: var(--muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-btn:hover:not(.active) { color: #ccd; }
+  .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .screen { display: none; flex: 1; overflow-y: auto; padding: 20px; }
+  .screen.active { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--card-bg); border: 0.5px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-card { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .today-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); gap: 10px; }
+  .today-row:last-child { border-bottom: none; }
+  .t-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .t-name { font-size: 14px; color: #ccd; font-weight: 500; flex: 1; }
+  .t-badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+  .badge-done { background: rgba(46,213,115,0.15); color: var(--green); }
+  .badge-none { background: rgba(255,71,87,0.15); color: var(--red); }
+  .rank-toggle-container { display: flex; background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; }
+  .rank-toggle-btn { flex: 1; border: none; background: none; color: var(--muted); padding: 8px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .rank-toggle-btn.active { background: var(--card-bg); color: var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .filter-sel { background: var(--dark-gray); border: 0.5px solid var(--border); color: #ccd; border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
+  .rank-table { width: 100%; border-collapse: collapse; }
+  .rank-table th { font-size: 11px; color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 0.5px solid var(--border); text-transform: uppercase; letter-spacing: 0.06em; }
+  .rank-table td { padding: 11px 12px; font-size: 13px; color: #ccd; border-bottom: 0.5px solid rgba(255,255,255,0.04); }
+  .rank-num { font-size: 18px; font-weight: 700; width: 36px; text-align: center; }
+  .r1 { color: #FFD700; }
+  .r2 { color: #C0C0C0; }
+  .r3 { color: #CD7F32; }
+  .r-other { color: var(--muted); font-size: 15px; }
+  .pdf-btn { background: none; border: 0.5px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .pdf-btn:hover { background: rgba(232,255,71,0.1); }
+  .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .profile-avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: var(--black); }
+  .profile-name { font-size: 18px; font-weight: 700; color: #eef; }
+  .profile-sub { font-size: 13px; color: var(--muted); }
+  .profile-container { display: flex; flex-direction: column; gap: 12px; }
+  .metric-item-wrapper { display: flex; flex-direction: column; background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2px; }
+  .metric-row-clickable { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
+  .metric-row-clickable:hover { background: rgba(255,255,255,0.02); }
+  .metric-label-group { display: flex; flex-direction: column; gap: 2px; }
+  .inline-chart-container { display: none; background: #161616; border-top: 0.5px solid rgba(255,255,255,0.04); padding: 12px; transition: all 0.2s ease-out; }
+  .inline-chart-container.active { display: block; }
+  .inline-chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 4px; flex-wrap: wrap; gap: 6px; }
+  .inline-chart-title { font-size: 11px; font-weight: 600; color: var(--accent2); }
+  .chart-filter-select { background: #222; border: 0.5px solid var(--border); color: #ccd; border-radius: 4px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 12px; color: var(--muted); }
+  .req { color: var(--accent); font-size: 10px; margin-left: 2px; }
+  .form-input { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 8px; color: #eef; padding: 9px 12px; font-size: 14px; width: 100%; transition: border 0.15s; }
+  .form-input:focus { outline: none; border-color: var(--accent2); }
+  .calc-container { display: flex; flex-direction: column; gap: 8px; justify-content: flex-end; }
+  .calc-row { background: rgba(232,255,71,0.05); border: 0.5px solid rgba(232,255,71,0.2); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 40px; }
+  .calc-label { font-size: 12px; color: var(--accent); white-space: nowrap; }
+  .calc-val { font-size: 15px; font-weight: 700; color: var(--accent); text-align: right; }
+  .submit-btn { background: var(--accent); color: var(--black); border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 4px; }
+  .submit-btn:hover { background: #f5ff80; transform: translateY(-1px); }
+  .logout-btn { background: rgba(255, 71, 87, 0.1); color: var(--red); border: 0.5px solid var(--red); border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; width: 100%; margin-top: 16px; text-align: center; }
+  .logout-btn:hover { background: rgba(255, 71, 87, 0.2); }
+  .settings-row { display: flex; align-items: center; padding: 14px 0; border-bottom: 0.5px solid var(--border); gap: 12px; }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--dark-gray); display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--muted); }
+  .settings-label { font-size: 14px; color: #ccd; flex: 1; }
+  .settings-val { font-size: 13px; color: var(--muted); }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: var(--black); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  .toggle-checkbox { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
+  .toggle-checkbox input { accent-color: var(--accent2); cursor: pointer; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.active { display: flex; }
+  .modal-card { background: var(--card-bg); border: 0.5px solid var(--border); border-radius: 16px; max-width: 440px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+  .modal-header { font-size: 16px; font-weight: 700; color: var(--accent); border-bottom: 0.5px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .close-modal-btn { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+  .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 240px; overflow-y: auto; padding: 4px; }
+  .chk-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ccd; cursor: pointer; }
+  .chk-item input { accent-color: var(--accent2); cursor: pointer; }
+  .modal-btn-row { display: flex; gap: 10px; margin-top: 8px; }
+  .modal-btn-secondary { background: var(--dark-gray); color: #ccd; border: 0.5px solid var(--border); padding: 10px; border-radius: 8px; flex: 1; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .select-link-btn { background: none; border: none; color: var(--accent2); font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    .form-grid { grid-template-columns: 1fr; gap: 10px; }
+    .form-group:not(.full) { grid-column: 1 / -1; }
+    .calc-container { justify-content: flex-start; margin-top: 4px; }
+  }
+  /* コメント・メッセージ */
+  .comment-banner { background: rgba(232,255,71,0.07); border: 0.5px solid rgba(232,255,71,0.3); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; }
+  .comment-banner:hover { background: rgba(232,255,71,0.12); }
+  .comment-banner-icon { font-size: 22px; flex-shrink: 0; }
+  .comment-banner-text { flex: 1; }
+  .comment-banner-title { font-size: 13px; font-weight: 700; color: var(--accent); }
+  .comment-banner-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .comment-banner-badge { background: var(--accent); color: var(--black); font-size: 11px; font-weight: 700; border-radius: 20px; padding: 2px 8px; flex-shrink: 0; }
+  .comment-list { display: flex; flex-direction: column; gap: 10px; }
+  .comment-item { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .comment-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .comment-item-from { font-size: 11px; font-weight: 700; color: var(--accent2); }
+  .comment-item-date { font-size: 11px; color: var(--muted); }
+  .comment-item-body { font-size: 14px; color: #eef; line-height: 1.6; white-space: pre-wrap; }
+  .comment-textarea { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 8px; color: #eef; padding: 10px 12px; font-size: 14px; width: 100%; resize: none; min-height: 90px; font-family: inherit; transition: border 0.15s; }
+  .comment-textarea:focus { outline: none; border-color: var(--accent2); }
+  .comment-send-btn { background: var(--accent2); color: var(--black); border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
+  .comment-send-btn:hover { opacity: 0.85; }
+  /* 催促モーダル */
+  .urge-member-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+  .urge-member-row:last-child { border-bottom: none; }
+  .urge-chk { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+  .urge-name { font-size: 14px; color: #ccd; flex: 1; }
+  .select-all-btn { font-size: 12px; color: var(--accent2); background: none; border: none; cursor: pointer; padding: 0; }
+  /* 通知許可バナー */
+  .notif-banner { background: rgba(71,200,255,0.07); border: 0.5px solid rgba(71,200,255,0.3); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .notif-banner-text { flex: 1; font-size: 12px; color: var(--accent2); line-height: 1.5; }
+  .notif-enable-btn { background: var(--accent2); color: var(--black); border: none; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-title">⚡ Prospect Forge ログイン</div>
+  <div class="form-group">
+    <label class="form-label">氏名</label>
+    <input type="text" class="form-input" id="l-name" placeholder="氏名">
+  </div>
+  <div class="form-group">
+    <label class="form-label">選手ID</label>
+    <input type="text" class="form-input" id="l-id" placeholder="7">
+  </div>
+  <div class="form-group">
+    <label class="form-label">パスワード</label>
+    <input type="password" class="form-input" id="l-pass" placeholder="••••">
+  </div>
+  <button class="submit-btn" style="margin-top:10px;" onclick="attemptLogin()">ログイン</button>
+</div>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-logo">⚡ PROSPECT FORGE</div>
+    <div class="hdr-user" onclick="showScreen('account')">
+      <div class="avatar" id="hdr-avatar-char">👤</div>
+      <span class="hdr-username-text" id="hdr-username">---</span>
+    </div>
+  </div>
+  <div class="nav" id="nav">
+    <button class="nav-btn active" onclick="showScreen('dashboard')" data-screen="dashboard">今日の状況</button>
+    <button class="nav-btn" onclick="showScreen('ranking')" data-screen="ranking">ランキング</button>
+    <button class="nav-btn" onclick="showScreen('profile')" data-screen="profile">個人表</button>
+    <button class="nav-btn" id="nav-report-btn" onclick="showScreen('report')" data-screen="report">報告</button>
+    <button class="nav-btn" id="nav-messages-btn" onclick="showScreen('messages')" data-screen="messages" style="display:none;">メッセージ</button>
+    <button class="nav-btn" onclick="showScreen('account')" data-screen="account">設定</button>
+  </div>
+  <div class="main">
+    <div class="screen active" id="screen-dashboard">
+      <!-- 選手用：コメント通知バナー（JS制御で表示） -->
+      <div id="comment-banner-wrap" style="display:none;">
+        <div class="comment-banner" onclick="showScreen('messages')">
+          <div class="comment-banner-icon">💬</div>
+          <div class="comment-banner-text">
+            <div class="comment-banner-title">指導者からのメッセージ</div>
+            <div class="comment-banner-sub" id="comment-banner-sub">タップして確認</div>
+          </div>
+          <div class="comment-banner-badge" id="comment-banner-badge">0</div>
+        </div>
+      </div>
+      <!-- 指導者用：催促ボタン -->
+      <div id="urge-btn-wrap" style="display:none;">
+        <button class="pdf-btn" style="width:100%;justify-content:center;" onclick="openUrgeModal()">📣 未提出者に催促メッセージを送る</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="reported-count">0</div>
+          <div class="stat-label">本日報告済</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="color:var(--red)" id="unreported-count">0</div>
+          <div class="stat-label">未報告</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" style="color:var(--accent2)" id="total-count">0</div>
+          <div class="stat-label">チーム人数</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">✓ 本日報告済み</div>
+        <div id="done-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:var(--red)">⚠ 未報告者</div>
+        <div id="unreported-list"></div>
+      </div>
+    </div>
+    <div class="screen" id="screen-ranking">
+      <div class="rank-toggle-container">
+        <button class="rank-toggle-btn active" id="btn-rank-daily" onclick="setRankMode('daily')">当日のランキング</button>
+        <button class="rank-toggle-btn" id="btn-rank-alltime" onclick="setRankMode('alltime')">歴代最高ランキング</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div class="filters">
+          <select class="filter-sel" id="rank-event" onchange="renderRanking()">
+            <option value="bench1rm">ベンチプレス 1RM</option>
+            <option value="bench10rm">ベンチプレス 10RM</option>
+            <option value="squat1rm">スクワット 1RM</option>
+            <option value="squat10rm">スクワット 10RM</option>
+            <option value="dead1rm">デッドリフト 1RM</option>
+            <option value="dead10rm">デッドリフト 10RM</option>
+            <option value="pulldown">プルダウン</option>
+            <option value="batspeed">バットスピード</option>
+            <option value="chinups">懸垂</option>
+            <option value="sprint10">10m走</option>
+            <option value="sprint30">30m走</option>
+            <option value="triplejump">三段跳び</option>
+            <option value="medicine">メディシン</option>
+            <option value="height">身長</option>
+            <option value="weight">体重</option>
+            <option value="ffm">除脂肪体重</option>
+            <option value="ffmi">除脂肪指数</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="pdf-btn" onclick="openExportModal()">📄 PDF / CSV</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table class="rank-table" id="rank-table">
+          <thead>
+            <tr>
+              <th style="width:50px">順位</th>
+              <th>氏名</th>
+              <th>記録</th>
+            </tr>
+          </thead>
+          <tbody id="rank-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="screen" id="screen-profile">
+      <div class="card" id="coach-selector-card" style="display:none; margin-bottom:12px;">
+        <div class="card-title">🔍 閲覧する選手を選択</div>
+        <select class="filter-sel" id="coach-member-select" onchange="handleCoachPlayerChange()" style="width:100%; padding:10px; font-size:15px; font-weight:700; color:var(--accent); border-color:rgba(232,255,71,0.3);"></select>
+      </div>
+      <!-- 指導者用コメント送信カード -->
+      <div class="card" id="coach-comment-card" style="display:none;">
+        <div class="card-title">💬 選手へのコメント</div>
+        <div id="coach-comment-history" class="comment-list" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea class="comment-textarea" id="coach-comment-input" placeholder="コメントを入力..."></textarea>
+          <button class="comment-send-btn" onclick="sendComment()">送信</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="profile-header">
+          <div class="profile-avatar" id="prof-avatar">👤</div>
+          <div>
+            <div class="profile-name" id="prof-name">---</div>
+            <div class="profile-sub" id="prof-sub-id">---</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div style="background:rgba(71,200,255,0.08);border:0.5px solid rgba(71,200,255,0.3);border-radius:8px;padding:10px 16px;flex:1;min-width:120px;">
+            <div style="font-size:11px;color:var(--accent2);" id="weight-label-text">現在の体重</div>
+            <div style="font-size:24px;font-weight:700;color:var(--accent2);" id="prof-weight">--</div>
+            <div style="font-size:11px;color:var(--muted);">kg</div>
+          </div>
+          <div style="background:rgba(232,255,71,0.08);border:0.5px solid rgba(232,255,71,0.3);border-radius:8px;padding:10px 16px;flex:1;min-width:120px;">
+            <div style="font-size:11px;color:var(--accent);">筋トレのランク</div>
+            <div style="font-size:24px;font-weight:700;color:var(--accent);" id="prof-rank-label">--</div>
+            <div style="font-size:11px;color:var(--muted);" id="prof-total-score">総合指数: --点</div>
+          </div>
+        </div>
+      </div>
+      <div class="profile-container">
+        <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; padding-left:4px;" id="profile-grid-title">各種目の歴代最高データ</div>
+        <div id="metric-list-container"></div>
+      </div>
+    </div>
+    <div class="screen" id="screen-report">
+      <div class="card">
+        <div class="card-title">📝 トレーニング報告</div>
+        <div class="form-grid" id="report-form">
+          <div class="form-group">
+            <label class="form-label">氏名<span class="req">必須</span></label>
+            <input type="text" class="form-input" id="f-name" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">日付<span class="req">必須</span></label>
+            <input type="date" class="form-input" id="f-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">身長 (cm)</label>
+            <input type="number" class="form-input" id="f-height" placeholder="例: 175.0" step="0.1" oninput="calcDerived()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">体重 (kg)</label>
+            <input type="number" class="form-input" id="f-weight" placeholder="例: 75.0" step="0.1" oninput="calcDerived()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">体脂肪率 (%)</label>
+            <input type="number" class="form-input" id="f-bf" placeholder="目標: 16" step="0.1" oninput="calcDerived()">
+          </div>
+          <div class="form-group calc-container">
+            <div class="calc-row">
+              <span class="calc-label">除脂肪体重</span>
+              <span class="calc-val" id="c-ffm">-- kg</span>
+            </div>
+            <div class="calc-row">
+              <span class="calc-label">除脂肪指数</span>
+              <span class="calc-val" id="c-ffmi">-- </span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">バットスピード (km/h)</label>
+            <input type="number" class="form-input" id="f-bat" placeholder="目標: 130" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">プルダウン (km/h)</label>
+            <input type="number" class="form-input" id="f-pull" placeholder="目標: 140" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ベンチプレス 1RM (kg)</label>
+            <input type="number" class="form-input" id="f-b1" placeholder="目標: 100" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">スクワット 1RM (kg)</label>
+            <input type="number" class="form-input" id="f-s1" placeholder="目標: 200" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">デッドリフト 1RM (kg)</label>
+            <input type="number" class="form-input" id="f-d1" placeholder="目標: 250" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">懸垂 (回)</label>
+            <input type="number" class="form-input" id="f-chin" placeholder="目標: 20" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ベンチプレス 10RM (kg)</label>
+            <input type="number" class="form-input" id="f-b10" placeholder="目標: 75" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">スクワット 10RM (kg)</label>
+            <input type="number" class="form-input" id="f-s10" placeholder="目標: 150" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">デッドリフト 10RM (kg)</label>
+            <input type="number" class="form-input" id="f-d10" placeholder="目標: 185" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">メディシン バックスロー (m)</label>
+            <input type="number" class="form-input" id="f-med" placeholder="目標: 17" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">10m走 (秒)</label>
+            <input type="number" class="form-input" id="f-10m" placeholder="目標: 1.80" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">30m走 (秒)</label>
+            <input type="number" class="form-input" id="f-30m" placeholder="目標: 4.40" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">三段跳び (m)</label>
+            <input type="number" class="form-input" id="f-triple" placeholder="目標: 7.5" step="0.01">
+          </div>
+          <div class="form-group full">
+            <button class="submit-btn" id="btn-submit" onclick="submitReport()">報告を提出する</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="screen" id="screen-messages">
+      <div id="notif-permission-banner" style="display:none;">
+        <div class="notif-banner">
+          <div class="notif-banner-text">🔔 通知を許可すると、新しいメッセージが届いた時に知らせます。</div>
+          <button class="notif-enable-btn" onclick="requestNotifPermission()">許可する</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">💬 指導者からのメッセージ</div>
+        <div id="player-comment-list" class="comment-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">メッセージはありません</div>
+        </div>
+      </div>
+    </div>
+    <div class="screen" id="screen-account">
+      <div class="card">
+        <div style="text-align:center; padding: 8px 0 20px;">
+          <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:var(--black);margin:0 auto 12px;" id="prof-avatar-large">👤</div>
+          <div style="font-size:18px;font-weight:700;color:#eef;" id="sett-name">---</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px;" id="sett-sub">---</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-icon">👤</div>
+          <div class="settings-label">氏名</div>
+          <div class="settings-val" id="sett-val-name">---</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-icon">🆔</div>
+          <div class="settings-label">選手ID</div>
+          <div class="settings-val" id="sett-val-id">---</div>
+        </div>
+        <button class="logout-btn" onclick="logout()">ログアウト</button>
+      </div>
+      <div class="card" id="notif-settings-card">
+        <div class="card-title">🔔 プッシュ通知</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;" id="notif-status-text">通知の状態を確認中...</div>
+        <button class="submit-btn" style="background:var(--accent2);" onclick="requestNotifPermission()" id="notif-settings-btn">通知を許可する</button>
+      </div>
+  </div>
+</div>
+<div class="modal-overlay" id="urge-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span>📣 催促メッセージを送る</span>
+      <button class="close-modal-btn" onclick="closeUrgeModal()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);">送信する選手を選んでください（欠席・怪我人は外してください）</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:12px;color:var(--muted);" id="urge-count-label">0人選択中</div>
+      <button class="select-all-btn" onclick="toggleSelectAllUrge()">すべて選択 / 解除</button>
+    </div>
+    <div id="urge-member-list" style="max-height:200px;overflow-y:auto;"></div>
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">メッセージ（省略可）</div>
+      <textarea class="comment-textarea" id="urge-message-input" placeholder="今日のトレーニング報告をお願いします！" style="min-height:60px;"></textarea>
+    </div>
+    <div class="modal-btn-row">
+      <button class="modal-btn-secondary" onclick="closeUrgeModal()">キャンセル</button>
+      <button class="submit-btn" style="flex:1;margin-top:0;" onclick="sendUrgeMessages()">送信する</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="export-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span>📥 出力種目の選択</span>
+      <button class="close-modal-btn" onclick="closeExportModal()">✕</button>
+    </div>
+    <div style="font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center;">
+      <span>出力したい種目にチェックを入れてください。</span>
+      <span style="display:flex; gap:8px; flex-shrink:0; margin-left:8px;">
+        <button class="select-link-btn" onclick="setAllExportChecks(true)">全選択</button>
+        <button class="select-link-btn" onclick="setAllExportChecks(false)">全選択解除</button>
+      </span>
+    </div>
+    <div class="checkbox-grid" id="modal-chk-grid"></div>
+    <div class="modal-btn-row">
+      <button class="modal-btn-secondary" onclick="closeExportModal()">キャンセル</button>
+      <button class="modal-btn-secondary" onclick="executePdfExport()" style="color:var(--accent); border-color:var(--accent);">PDF出力</button>
+      <button class="submit-btn" style="flex:1; margin-top:0;" onclick="executeCsvExport()">CSV出力</button>
+    </div>
+  </div>
+</div>
+<div id="toast">✓ 報告を送信しました！</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxuMU6UuOKfxPmMcwVczdIIYXXr8lF3pwUKO_RMh38zUCxEOWI8E_iYhy-waBeNKYiE/exec';
+
+let currentUser = null;
+let teamMembers = [];
+let reportsData = []; 
+let allBestRecords = {}; 
+let rankingMode = 'daily'; 
+let selectedPlayerForCoach = null; 
+let activeChartMetric = null; 
+let myChart = null;
+let showTeamAvgGlobal = true; 
+let activeChartRange = '30';
+let appConfigMap = {};
+let commentsData = []; // { id, from, to, body, date, read }
+
+const avatarColors = ['#e8ff47','#47c8ff','#ff4757','#2ed573','#ffa502','#a29bfe','#fd79a8','#fdcb6e','#74b9ff','#55efc4','#e17055','#b2bec3'];
+const units = {bench1rm:'kg',bench10rm:'kg',squat1rm:'kg',squat10rm:'kg',dead1rm:'kg',dead10rm:'kg',pulldown:'km/h',batspeed:'km/h',chinups:'回',sprint10:'秒',sprint30:'秒',triplejump:'m',medicine:'m',height:'cm',weight:'kg',ffm:'kg',ffmi:''};
+const eventMap = {bench1rm:'b1',bench10rm:'b10',squat1rm:'s1',squat10rm:'s10',dead1rm:'d1',dead10rm:'d10',pulldown:'pull',batspeed:'bat',chinups:'chin',sprint10:'s10m',sprint30:'s30m',triplejump:'triple',medicine:'med',height:'height',weight:'weight',ffm:'ffm',ffmi:'ffmi'};
+
+// 【完全修復】依存関係のあるすべての関数を下部から参照できるよう、JavaScriptトップレベルに定義
+function getMetricColorClassAndHex(metricId, currentValue) {
+  if (currentValue === null || currentValue === undefined || currentValue === '') {
+    return { hex: '#ffffff', isDefault: true }; 
+  }
+  const config = appConfigMap[metricId];
+  if (!config || config.target == null || config.target === 0) {
+    return { hex: '#ffffff', isDefault: true }; 
+  }
+  const val = parseFloat(currentValue);
+  const target = parseFloat(config.target);
+  if (isNaN(val) || isNaN(target)) return { hex: '#ffffff', isDefault: true };
+
+  const isTime = (metricId === 's10m' || metricId === 's30m'); 
+  if (isTime) {
+    if (val <= target) return { hex: 'var(--clr-achieved)' }; 
+    const ratio = target / val; 
+    if (ratio >= 0.70) return { hex: 'var(--clr-near)' }; 
+    return { hex: 'var(--clr-low)' }; 
+  } else {
+    if (val >= target) return { hex: 'var(--clr-achieved)' }; 
+    const ratio = val / target; 
+    if (ratio >= 0.70) return { hex: 'var(--clr-near)' }; 
+    return { hex: 'var(--clr-low)' }; 
+  }
+}
+
+function renderRanking() {
+  const event = document.getElementById('rank-event').value;
+  const apiKey = eventMap[event];
+  const isTime = event === 'sprint30' || event === 'sprint10';
+  let ranks = [];
+  const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  const todayStr = nowJST.toISOString().split('T')[0];
+  teamMembers.forEach(name => {
+    if (rankingMode === 'daily') {
+      let userReports = reportsData.filter(r => r.name === name && r[apiKey] !== "" && r[apiKey] !== null && r[apiKey] !== undefined);
+      let todayReport = userReports.find(r => r.date === todayStr);
+      if (todayReport) ranks.push({ n: name, v: parseFloat(todayReport[apiKey]) });
+    } else {
+      if (allBestRecords[name] && allBestRecords[name][apiKey] !== undefined) ranks.push({ n: name, v: allBestRecords[name][apiKey] });
+    }
+  });
+  ranks.sort((a,b) => isTime ? a.v-b.v : b.v-a.v);
+  const unit = units[event];
+  const tbody = document.getElementById('rank-body');
+  if (ranks.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted);">対象のデータがありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = ranks.map((row,i) => {
+    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'r-other';
+    const rankText = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    return `<tr>
+      <td><span class="rank-num ${rankClass}">${rankText}</span></td>
+      <td><strong style="color:#eef;">${row.n}</strong></td>
+      <td style="font-size:15px;font-weight:700;color:var(--accent);">${row.v}${unit}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInlineChart(metricId) {
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
+  const canvasElement = document.getElementById(`canvas-${metricId}`); if (!targetName || !canvasElement) return;
+  const ctx = canvasElement.getContext('2d'); const dates = []; const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  if (activeChartRange === 'all') {
+    const playerReports = reportsData.filter(r => r.name === targetName);
+    const uniqueDates = Array.from(new Set(playerReports.map(r => r.date))).sort();
+    dates.push(...uniqueDates); if(dates.length === 0) dates.push(nowJST.toISOString().split('T')[0]);
+  } else {
+    let rangeDays = parseInt(activeChartRange);
+    for (let i = rangeDays - 1; i >= 0; i--) { dates.push(new Date(nowJST.getTime() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]); }
+  }
+  const playerData = dates.map(date => {
+    const r = reportsData.find(r => r.name === targetName && r.date === date);
+    return (r && r[metricId] !== "" && r[metricId] !== undefined) ? parseFloat(r[metricId]) : null;
+  });
+  const teamAvgData = dates.map(date => {
+    const dailyReports = reportsData.filter(r => r.date === date && r[metricId] !== "" && r[metricId] !== undefined);
+    if (dailyReports.length === 0) return null;
+    return parseFloat((dailyReports.reduce((acc, r) => acc + parseFloat(r[metricId]), 0) / dailyReports.length).toFixed(2));
+  });
+  const currentMetricConfig = appConfigMap[metricId] || {};
+  const targetVal = (currentMetricConfig && currentMetricConfig.target != null) ? currentMetricConfig.target : null;
+  const targetData = dates.map(() => targetVal);
+  const pointColors = playerData.map(val => val === null ? '#47c8ff' : getMetricColorClassAndHex(metricId, val).hex);
+  if (myChart) myChart.destroy();
+  myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates.map(d => d.slice(5)),
+      datasets: [
+        { label: '個人', data: playerData, borderColor: '#47c8ff', backgroundColor: 'rgba(71, 200, 255, 0.05)', borderWidth: 2, tension: 0.1, spanGaps: true, pointRadius: dates.length > 90 ? 1.5 : 3.5, pointBackgroundColor: pointColors, pointBorderColor: '#ffffff', pointBorderWidth: 1.2 },
+        ...(showTeamAvgGlobal ? [{ label: '平均', data: teamAvgData, borderColor: '#e8ff47', backgroundColor: 'transparent', borderWidth: 1.2, borderDash: [3, 3], tension: 0.1, spanGaps: true, pointRadius: 0 }] : []),
+        ...(targetVal !== null && targetVal !== 0 ? [{ label: '目標', data: targetData, borderColor: '#ff4757', backgroundColor: 'transparent', borderWidth: 1.2, borderDash: [2, 2], pointRadius: 0, fill: false }] : [])
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#778899', font: { size: 8 }, maxTicksLimit: 8 } }, y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#778899', font: { size: 9 } } } } }
+  });
+}
+
+function updateProfile() {
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name;
+  if (!targetName) { document.getElementById('prof-name').textContent = '---'; return; }
+  document.getElementById('prof-name').textContent = targetName;
+  document.getElementById('prof-avatar').textContent = targetName[0];
+  let myReports = reportsData.filter(r => r.name === targetName);
+  let playerBests = allBestRecords[targetName] || {};
+  let latestWeight = '--'; let latestHeight = '--';
+  if (myReports.length > 0) {
+    let weightReports = myReports.filter(r => r.weight !== "" && r.weight !== null && r.weight !== undefined);
+    if (weightReports.length > 0) latestWeight = parseFloat(weightReports[weightReports.length - 1].weight).toFixed(1);
+    let heightReports = myReports.filter(r => r.height !== "" && r.height !== null && r.height !== undefined);
+    if (heightReports.length > 0) latestHeight = parseFloat(heightReports[heightReports.length - 1].height).toFixed(0);
+  }
+  document.getElementById('prof-weight').textContent = latestWeight;
+  const getBest = (key) => playerBests[key] || null;
+  const isStagnantCustomDays = (key) => {
+    let bestVal = getBest(key); if (bestVal === null) return false;
+    const itemConfig = appConfigMap[key] || { days: 30 }; const alertLimitDays = itemConfig.days;
+    const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+    const borderDate = new Date(nowJST.getTime() - (alertLimitDays * 24 * 60 * 60 * 1000));
+    let recentReports = myReports.filter(r => new Date(r.date) >= borderDate && r[key] !== "" && r[key] !== null && !isNaN(parseFloat(r[key])));
+    if (recentReports.length === 0) return true; 
+    return !recentReports.some(r => parseFloat(r[key]) === bestVal);
+  };
+  let bp10 = getBest('b10') || 0; let sq10 = getBest('s10') || 0; let dl10 = getBest('d10') || 0; let chin = getBest('chin') || 0;
+  let totalScore = (bp10 * 1.5625) + (sq10 * 0.8333333) + (dl10 * 0.75) + (chin * 5);
+  let rankStr = 'D'; let rankDescStr = '発展途上・トレーニング開始期（1年生レベル）';
+  if (totalScore >= 500) { rankStr = 'S'; rankDescStr = '全国上位・フィジカル突出（プロ・スカウト対象）'; }
+  else if (totalScore >= 420) { rankStr = 'A'; rankDescStr = '強豪校主力クラス（県上位・私学レギュラー級）'; }
+  else if (totalScore >= 340) { rankStr = 'B'; rankDescStr = '県上位レギュラー争い・一般部員の上位層'; }
+  else if (totalScore >= 260) { rankStr = 'C'; rankDescStr = '平均的な高校球児（一般的な公立校レベル）'; }
+  document.getElementById('prof-rank-label').textContent = rankStr;
+  document.getElementById('prof-total-score').textContent = `総合指数: ${totalScore.toFixed(1)}点`;
+  document.getElementById('prof-sub-id').textContent = `身長 ${latestHeight}cm / ${rankDescStr}`;
+  const metrics = [
+    { id: 'ffm', label: '除脂肪体重', val: getBest('ffm') ? getBest('ffm').toFixed(1) + 'kg' : '--', stag: isStagnantCustomDays('ffm'), raw: getBest('ffm') },
+    { id: 'ffmi', label: '除脂肪指数', val: getBest('ffmi') ? getBest('ffmi').toFixed(1) : '--', stag: isStagnantCustomDays('ffmi'), raw: getBest('ffmi') },
+    { id: 'b10', label: 'ベンチ 10RM', val: getBest('b10') ? getBest('b10') + 'kg' : '--', stag: isStagnantCustomDays('b10'), raw: getBest('b10') },
+    { id: 's10', label: 'スクワット 10RM', val: getBest('s10') ? getBest('s10') + 'kg' : '--', stag: isStagnantCustomDays('s10'), raw: getBest('s10') },
+    { id: 'd10', label: 'デッドリフト 10RM', val: getBest('d10') ? getBest('d10') + 'kg' : '--', stag: isStagnantCustomDays('d10'), raw: getBest('d10') },
+    { id: 'chin', label: '懸垂', val: getBest('chin') ? getBest('chin') + '回' : '--', stag: isStagnantCustomDays('chin'), raw: getBest('chin') },
+    { id: 'bat', label: 'バットスピード', val: getBest('bat') ? getBest('bat') + 'km/h' : '--', stag: isStagnantCustomDays('bat'), raw: getBest('bat') },
+    { id: 'pull', label: 'プルダウン', val: getBest('pull') ? getBest('pull') + 'km/h' : '--', stag: isStagnantCustomDays('pull'), raw: getBest('pull') },
+    { id: 'med', label: 'メディシン投げ', val: getBest('med') ? getBest('med') + 'm' : '--', stag: isStagnantCustomDays('med'), raw: getBest('med') },
+    { id: 'triple', label: '三段跳び', val: getBest('triple') ? getBest('triple') + 'm' : '--', stag: isStagnantCustomDays('triple'), raw: getBest('triple') },
+    { id: 's10m', label: '10m走', val: getBest('s10m') ? getBest('s10m').toFixed(2) + '秒' : '--', stag: isStagnantCustomDays('s10m'), raw: getBest('s10m') },
+    { id: 's30m', label: '30m走', val: getBest('s30m') ? getBest('s30m').toFixed(2) + '秒' : '--', stag: isStagnantCustomDays('s30m'), raw: getBest('s30m') }
+  ];
+  document.getElementById('metric-list-container').innerHTML = metrics.map(m => {
+    const isRed = (currentUser.role === '指導者' && m.stag); const labelColor = isRed ? 'rgba(255, 71, 87, 0.7)' : 'var(--muted)';
+    const itemBorderColor = m.id === activeChartMetric ? 'var(--accent2)' : 'transparent'; const arrowIcon = m.id === activeChartMetric ? '▼' : '▶';
+    const valueTextColor = getMetricColorClassAndHex(m.id, m.raw).hex;
+    return `
+      <div class="metric-item-wrapper" style="border-color: ${itemBorderColor};">
+        <div class="metric-row-clickable" onclick="toggleMetricChart('${m.id}')">
+          <div class="metric-label-group">
+            <span class="metric-name" style="font-size: 11px; color: ${labelColor}; font-weight: 600;">${m.label}${isRed ? ' ⚠' : ''}</span>
+            <span class="metric-val" style="font-size: 20px; font-weight: 700; color: ${valueTextColor}; margin-top:2px;">${m.val}</span>
+          </div>
+          <span style="font-size: 11px; color: var(--muted); padding-right: 4px;">${arrowIcon}</span>
+        </div>
+        <div class="inline-chart-container ${m.id === activeChartMetric ? 'active' : ''}" id="chart-area-${m.id}">
+          <div class="inline-chart-header">
+            <select class="chart-filter-select" id="sel-range-${m.id}" onchange="handleChartRangeChange('${m.id}')">
+              <option value="14" ${activeChartRange === '14' ? 'selected' : ''}>2週間</option>
+              <option value="30" ${activeChartRange === '30' ? 'selected' : ''}>1ヶ月</option>
+              <option value="90" ${activeChartRange === '90' ? 'selected' : ''}>3ヶ月</option>
+              <option value="180" ${activeChartRange === '180' ? 'selected' : ''}>半年</option>
+              <option value="365" ${activeChartRange === '365' ? 'selected' : ''}>1年</option>
+              <option value="all" ${activeChartRange === 'all' ? 'selected' : ''}>過去全て</option>
+            </select>
+            <label class="toggle-checkbox" onclick="event.stopPropagation();">
+              <input type="checkbox" id="chk-team-${m.id}" ${showTeamAvgGlobal ? 'checked' : ''} onchange="handleTeamAvgToggle('${m.id}')"> 平均
+            </label>
+          </div>
+          <div style="position:relative; width:100%; height:160px;">
+            <canvas id="canvas-${m.id}"></canvas>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  if (activeChartMetric) renderInlineChart(activeChartMetric);
+}
+
+async function attemptLogin() {
+  const name = document.getElementById('l-name').value.trim();
+  const userId = document.getElementById('l-id').value.trim();
+  const password = document.getElementById('l-pass').value.trim();
+  if(!name || !userId || !password) { alert('すべての項目を入力してください'); return; }
+
+  const btn = document.querySelector('.login-btn') || document.querySelector('button[onclick*="attemptLogin"]');
+  if(btn) { btn.disabled = true; btn.textContent = 'ログイン中...'; }
+
+  try {
+    // ① 認証のみ（reportsを返さない軽量モード）
+    const response = await fetch(GAS_URL, {
+      method: 'POST', mode: 'cors', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'login', name, userId, password, lightMode: true })
+    });
+    const text = await response.text();
+    let result;
+    try { result = JSON.parse(text); }
+    catch(e) {
+      alert('サーバーの応答が不正です。GASのデプロイ設定（アクセス：全員）を確認してください。\n\n応答:' + text.slice(0,200));
+      if(btn) { btn.disabled = false; btn.textContent = 'ログイン'; }
+      return;
+    }
+
+    if(result.success || result.ok) {
+      currentUser    = result.user;
+      teamMembers    = result.members || [];
+      reportsData    = [];
+      allBestRecords = {};
+      appConfigMap   = result.config || {};
+
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      if(btn) { btn.disabled = false; btn.textContent = 'ログイン'; }
+      initApp();
+
+      // ② 画面表示後にバックグラウンドでデータ取得
+      loadReportsInBackground();
+    } else {
+      alert(result.message || result.error || 'ログインに失敗しました');
+      if(btn) { btn.disabled = false; btn.textContent = 'ログイン'; }
+    }
+  } catch (error) {
+    alert('通信に失敗しました。GASのデプロイURL・アクセス設定を確認してください。\n\n' + error.message);
+    console.error(error);
+    if(btn) { btn.disabled = false; btn.textContent = 'ログイン'; }
+  }
+}
+
+async function loadReportsInBackground() {
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST', mode: 'cors', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'getReports' })
+    });
+    const result = await response.json();
+    if(result.reports) {
+      reportsData    = result.reports;
+      allBestRecords = result.bestRecords || {};
+      // 画面を再描画
+      updateDashboard();
+      if(document.getElementById('screen-profile').classList.contains('active')) updateProfile();
+      if(document.getElementById('screen-ranking').classList.contains('active')) renderRanking();
+    }
+  } catch(e) { console.warn('バックグラウンドデータ取得失敗:', e); }
+}
+
+function initApp() {
+  document.getElementById('hdr-username').textContent = currentUser.name;
+  document.getElementById('hdr-avatar-char').textContent = currentUser.name[0];
+  document.getElementById('f-name').value = currentUser.name;
+  
+  const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  document.getElementById('f-date').value = nowJST.toISOString().split('T')[0];
+  
+  document.getElementById('sett-name').textContent = currentUser.name;
+  document.getElementById('sett-sub').textContent = currentUser.role === '指導者' ? '指導者アカウント' : `選手ID: ${currentUser.userId}`;
+  document.getElementById('sett-val-name').textContent = currentUser.name;
+  document.getElementById('sett-val-id').textContent = currentUser.role === '指導者' ? '---' : currentUser.userId;
+  document.getElementById('prof-avatar-large').textContent = currentUser.name[0];
+  
+  if (currentUser.role === '指導者') {
+    document.getElementById('nav-report-btn').style.display = 'none'; 
+    document.getElementById('nav-messages-btn').style.display = 'none';
+    document.getElementById('urge-btn-wrap').style.display = 'block';
+    document.getElementById('comment-banner-wrap').style.display = 'none';
+    document.getElementById('coach-selector-card').style.display = 'block'; 
+    document.getElementById('coach-comment-card').style.display = 'block';
+    document.getElementById('profile-grid-title').innerHTML = '各種目の歴代最高データ <span style="color:var(--red); font-size:11px; font-weight:normal; margin-left:6px;">※赤字は設定日数以上更新なし</span>';
+    const selector = document.getElementById('coach-member-select');
+    selector.innerHTML = teamMembers.map(m => `<option value="${m}">${m}</option>`).join('');
+    selectedPlayerForCoach = teamMembers[0] || null; 
+  } else {
+    document.getElementById('nav-report-btn').style.display = 'block';
+    document.getElementById('nav-messages-btn').style.display = 'block';
+    document.getElementById('urge-btn-wrap').style.display = 'none';
+    document.getElementById('coach-selector-card').style.display = 'none';
+    document.getElementById('coach-comment-card').style.display = 'none';
+    document.getElementById('profile-grid-title').textContent = '各種目の歴代最高データ';
+    selectedPlayerForCoach = null;
+  }
+  initNotifications();
+  loadComments();
+  
+  buildExportCheckboxGrid();
+  updateFormPlaceholders();
+  updateDashboard();
+  updateProfile();
+}
+
+function updateFormPlaceholders() {
+  const fieldMap = [
+    { id: 'f-height', key: 'height', def: '例: 175.0' }, 
+    { id: 'f-weight', key: 'weight', def: '例: 75.0' },  
+    { id: 'f-bf',     key: 'bf',     def: '目標: 16' },
+    { id: 'f-bat',    key: 'bat',    def: '目標: 130' },
+    { id: 'f-pull',   key: 'pull',   def: '目標: 140' },
+    { id: 'f-b1',     key: 'b1',     def: '目標: 100' },
+    { id: 'f-s1',     key: 's1',     def: '目標: 200' },
+    { id: 'f-d1',     key: 'd1',     def: '目標: 250' },
+    { id: 'f-chin',   key: 'chin',   def: '目標: 20' },
+    { id: 'f-b10',    key: 'b10',    def: '目標: 80' },
+    { id: 'f-s10',    key: 's10',    def: '目標: 150' },
+    { id: 'f-d10',    key: 'd10',    def: '目標: 185' },
+    { id: 'f-med',    key: 'med',    def: '目標: 17' },
+    { id: 'f-10m',    key: 's10m',   def: '目標: 1.80' },
+    { id: 'f-30m',    key: 's30m',   def: '目標: 4.40' },
+    { id: 'f-triple', key: 'triple', def: '目標: 7.5' }
+  ];
+  fieldMap.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (!el) return;
+    if (f.key === 'height' || f.key === 'weight') {
+      el.placeholder = f.def;
+      return;
+    }
+    const config = appConfigMap[f.key];
+    if (config && config.target != null) {
+      el.placeholder = '目標: ' + config.target;
+    } else {
+      el.placeholder = f.def;
+    }
+  });
+}
+
+function handleCoachPlayerChange() {
+  selectedPlayerForCoach = document.getElementById('coach-member-select').value;
+  activeChartMetric = null; 
+  updateProfile();
+  renderCoachCommentHistory();
+}
+
+function forceLogout() {
+  currentUser = null;
+  teamMembers = [];
+  reportsData = [];
+  allBestRecords = {};
+  selectedPlayerForCoach = null;
+  activeChartMetric = null;
+  if(myChart) { myChart.destroy(); myChart = null; }
+  document.getElementById('l-name').value = '';
+  document.getElementById('l-id').value = '';
+  document.getElementById('l-pass').value = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  showScreen('dashboard');
+}
+
+function logout() {
+  forceLogout();
+}
+
+function updateDashboard() {
+  const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
+  const todayStr = nowJST.toISOString().split('T')[0];
+  const reportedNames = reportsData.filter(r => r.date === todayStr).map(r => r.name);
+  const doneList = teamMembers.filter(m => reportedNames.includes(m));
+  const undoneList = teamMembers.filter(m => !reportedNames.includes(m));
+  document.getElementById('reported-count').textContent = doneList.length;
+  document.getElementById('unreported-count').textContent = undoneList.length;
+  document.getElementById('total-count').textContent = teamMembers.length;
+  const mkRow = (name, i, isDone) => `
+    <div class="today-row">
+      <div class="t-avatar" style="background:${avatarColors[i%avatarColors.length]}20;color:${avatarColors[i%avatarColors.length]};">${name[0]}</div>
+      <span class="t-name">${name}</span>
+      <span class="t-badge ${isDone?'badge-done':'badge-none'}">${isDone?'✓ 報告済':'未報告'}</span>
+    </div>`;
+  document.getElementById('done-list').innerHTML = doneList.map((m,i)=>mkRow(m,i,true)).join('');
+  document.getElementById('unreported-list').innerHTML = undoneList.map((m,i)=>mkRow(m,i+doneList.length,false)).join('');
+  // 選手用コメントバナー更新
+  if (currentUser && currentUser.role !== '指導者') {
+    const myUnread = commentsData.filter(c => c.to === currentUser.name && !c.read);
+    const wrap = document.getElementById('comment-banner-wrap');
+    wrap.style.display = myUnread.length > 0 ? 'block' : 'none';
+    document.getElementById('comment-banner-badge').textContent = myUnread.length;
+    document.getElementById('comment-banner-sub').textContent = `${myUnread.length}件の未読メッセージがあります`;
+  }
+}
+
+function toggleMetricChart(metricId) {
+  if (activeChartMetric === metricId) {
+    activeChartMetric = null; 
+  } else {
+    activeChartMetric = metricId; 
+  }
+  updateProfile();
+}
+
+function handleTeamAvgToggle(metricId) {
+  showTeamAvgGlobal = document.getElementById(`chk-team-${metricId}`).checked;
+  renderInlineChart(metricId);
+}
+
+function handleChartRangeChange(metricId) {
+  activeChartRange = document.getElementById(`sel-range-${metricId}`).value;
+  renderInlineChart(metricId);
+}
+
+function calcDerived() {
+  const w = parseFloat(document.getElementById('f-weight').value); const bf = parseFloat(document.getElementById('f-bf').value); const h = parseFloat(document.getElementById('f-height').value);
+  if(w && bf) {
+    const ffm = w * (1 - bf/100); document.getElementById('c-ffm').textContent = ffm.toFixed(1) + ' kg';
+    if(h) document.getElementById('c-ffmi').textContent = (ffm / Math.pow(h/100, 2)).toFixed(1) + ' ';
+  } else { document.getElementById('c-ffm').textContent = '-- kg'; document.getElementById('c-ffmi').textContent = '-- '; }
+}
+
+function validateFormInputs(payload) {
+  const fieldNamesMap = { height:'身長', weight:'体重', bf:'体脂肪率', bat:'バットスピード', pull:'プルダウン', b1:'ベンチプレス 1RM', s1:'スクワット 1RM', d1:'デッドリフト 1RM', chin:'懸垂', b10:'ベンチプレス 10RM', s10:'スクワット 10RM', d10:'デッドリフト 10RM', med:'メディシン投げ', s10m:'10m走', s30m:'30m走', triple:'三段跳び' };
+  const hardLimits = { height: {min:140,max:220}, weight: {min:40,max:180}, bf: {min:3,max:40}, bat: {min:70,max:200}, pull: {min:60,max:200}, b1: {min:20,max:300}, s1: {min:20,max:400}, d1: {min:20,max:450}, chin: {min:0,max:60}, b10: {min:10,max:250}, s10: {min:10,max:300}, d10: {min:10,max:350}, med: {min:3,max:30}, s10m: {min:1.0,max:3.0}, s30m: {min:3.0,max:6.5}, triple: {min:4,max:14} };
+  for (let key in fieldNamesMap) {
+    if (payload[key] === "" || payload[key] === undefined) continue;
+    const val = parseFloat(payload[key]); if (isNaN(val)) continue;
+    const configMin = (appConfigMap[key] && appConfigMap[key].min != null) ? appConfigMap[key].min : (hardLimits[key] ? hardLimits[key].min : null);
+    const configMax = (appConfigMap[key] && appConfigMap[key].max != null) ? appConfigMap[key].max : (hardLimits[key] ? hardLimits[key].max : null);
+    if (configMin !== null && val < configMin) { alert(`【入力エラー】${fieldNamesMap[key]}の値 (${val}) が低すぎます。\n下限値: ${configMin} 以上を入力してください。`); return false; }
+    if (configMax !== null && val > configMax) { alert(`【入力エラー】${fieldNamesMap[key]}の値 (${val}) が高すぎます。\n上限値: ${configMax} 以下を入力してください。`); return false; }
+  }
+  return true;
+}
+
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const target = document.getElementById('screen-' + screenId);
+  if (target) target.classList.add('active');
+  const navBtn = document.querySelector(`.nav-btn[data-screen="${screenId}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  if (screenId === 'ranking') renderRanking();
+  if (screenId === 'profile') { updateProfile(); if (currentUser && currentUser.role === '指導者') renderCoachCommentHistory(); }
+  if (screenId === 'messages') { renderPlayerComments(); markCommentsRead(); }
+}
+
+// ========== コメント機能 ==========
+async function loadComments() {
+  try {
+    const url = GAS_URL + '?action=getComments&name=' + encodeURIComponent(currentUser.name) + '&role=' + encodeURIComponent(currentUser.role);
+    const res = await fetch(url, { method:'GET', mode:'cors' });
+    const raw = await res.json();
+    // GASは配列 or {success,comments} どちらでも対応
+    if (Array.isArray(raw)) {
+      commentsData = raw;
+    } else if (raw.success) {
+      commentsData = raw.comments || [];
+    } else {
+      commentsData = [];
+    }
+    updateDashboard();
+    if (currentUser.role === '指導者') renderCoachCommentHistory();
+  } catch(e) { console.warn('コメント取得失敗:', e); }
+}
+
+async function sendComment() {
+  const body = document.getElementById('coach-comment-input').value.trim();
+  if (!body || !selectedPlayerForCoach) return;
+  const btn = document.querySelector('.comment-send-btn');
+  btn.disabled = true; btn.textContent = '送信中...';
+  const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
+  const comment = { from: currentUser.name, to: selectedPlayerForCoach, body, date: nowJST.toISOString().replace('T',' ').slice(0,16), read: false };
+  try {
+    const res = await fetch(GAS_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'sendComment', comment }) });
+    const result = await res.json();
+    if (result.success) {
+      commentsData.push({ ...comment, id: result.id });
+      document.getElementById('coach-comment-input').value = '';
+      renderCoachCommentHistory();
+      showToast('コメントを送信しました');
+      sendPushToPlayer(selectedPlayerForCoach, 'メッセージが届きました', `${currentUser.name}からのコメントがあります`);
+    } else { showToast('送信に失敗しました'); }
+  } catch(e) { showToast('送信に失敗しました'); }
+  btn.disabled = false; btn.textContent = '送信';
+}
+
+function renderCoachCommentHistory() {
+  const el = document.getElementById('coach-comment-history');
+  if (!el || !selectedPlayerForCoach) return;
+  const list = commentsData.filter(c => c.to === selectedPlayerForCoach).slice().reverse();
+  el.innerHTML = list.length ? list.map(c => `
+    <div class="comment-item">
+      <div class="comment-item-header">
+        <span class="comment-item-from">→ ${c.to}</span>
+        <span class="comment-item-date">${c.date}</span>
+      </div>
+      <div class="comment-item-body">${c.body}</div>
+    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:4px 0;">この選手へのコメントはまだありません</div>';
+}
+
+function renderPlayerComments() {
+  const el = document.getElementById('player-comment-list');
+  if (!el || !currentUser) return;
+  const list = commentsData.filter(c => c.to === currentUser.name).slice().reverse();
+  el.innerHTML = list.length ? list.map(c => `
+    <div class="comment-item">
+      <div class="comment-item-header">
+        <span class="comment-item-from">📨 ${c.from}</span>
+        <span class="comment-item-date">${c.date}</span>
+      </div>
+      <div class="comment-item-body">${c.body}</div>
+    </div>`).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">メッセージはありません</div>';
+  const banner = document.getElementById('notif-permission-banner');
+  if (banner) banner.style.display = Notification.permission === 'default' ? 'block' : 'none';
+}
+
+async function markCommentsRead() {
+  commentsData.forEach(c => { if (c.to === currentUser.name) c.read = true; });
+  document.getElementById('comment-banner-wrap').style.display = 'none';
+  try {
+    await fetch(GAS_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'markRead', name: currentUser.name }) });
+  } catch(e) {}
+}
+
+// ========== 催促メッセージ ==========
+function openUrgeModal() {
+  const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
+  const todayStr = nowJST.toISOString().split('T')[0];
+  const reportedNames = reportsData.filter(r => r.date === todayStr).map(r => r.name);
+  const unreported = teamMembers.filter(m => !reportedNames.includes(m));
+  if (!unreported.length) { showToast('未提出者はいません'); return; }
+  document.getElementById('urge-member-list').innerHTML = unreported.map(m => `
+    <div class="urge-member-row">
+      <input type="checkbox" class="urge-chk" value="${m}" checked onchange="updateUrgeCount()">
+      <span class="urge-name">${m}</span>
+    </div>`).join('');
+  updateUrgeCount();
+  document.getElementById('urge-modal').classList.add('active');
+}
+function closeUrgeModal() { document.getElementById('urge-modal').classList.remove('active'); }
+function updateUrgeCount() {
+  const n = document.querySelectorAll('#urge-member-list input:checked').length;
+  document.getElementById('urge-count-label').textContent = `${n}人選択中`;
+}
+function toggleSelectAllUrge() {
+  const boxes = document.querySelectorAll('#urge-member-list input');
+  const allChecked = Array.from(boxes).every(b => b.checked);
+  boxes.forEach(b => b.checked = !allChecked);
+  updateUrgeCount();
+}
+async function sendUrgeMessages() {
+  const targets = Array.from(document.querySelectorAll('#urge-member-list input:checked')).map(b => b.value);
+  if (!targets.length) { showToast('送信先を選択してください'); return; }
+  const customMsg = document.getElementById('urge-message-input').value.trim();
+  const body = customMsg || '今日のトレーニング報告をお願いします！';
+  const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
+  const date = nowJST.toISOString().replace('T',' ').slice(0,16);
+  const btn = document.querySelector('#urge-modal .submit-btn');
+  btn.disabled = true; btn.textContent = '送信中...';
+  try {
+    const res = await fetch(GAS_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'sendUrge', from: currentUser.name, targets, body, date }) });
+    const result = await res.json();
+    if (result.success) {
+      targets.forEach(name => {
+        commentsData.push({ from: currentUser.name, to: name, body: `【催促】${body}`, date, read: false });
+        sendPushToPlayer(name, 'トレーニング報告のお願い', body);
+      });
+      showToast(`${targets.length}人に送信しました`);
+      closeUrgeModal();
+    } else { showToast('送信に失敗しました'); }
+  } catch(e) { showToast('送信に失敗しました'); }
+  btn.disabled = false; btn.textContent = '送信する';
+}
+
+// ========== プッシュ通知 ==========
+let swRegistration = null;
+function initNotifications() {
+  updateNotifStatusUI();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => { swRegistration = reg; });
+  }
+  // 指導者：毎日21時のリマインダーをスケジュール
+  if (currentUser && currentUser.role === '指導者') scheduleCoachReminder();
+}
+function updateNotifStatusUI() {
+  const btn = document.getElementById('notif-settings-btn');
+  const txt = document.getElementById('notif-status-text');
+  if (!('Notification' in window)) {
+    if (txt) txt.textContent = 'このブラウザはプッシュ通知に対応していません';
+    if (btn) btn.style.display = 'none'; return;
+  }
+  if (Notification.permission === 'granted') {
+    if (txt) txt.textContent = '✓ 通知が有効です';
+    if (btn) btn.style.display = 'none';
+  } else if (Notification.permission === 'denied') {
+    if (txt) txt.textContent = '通知がブロックされています。ブラウザの設定から許可してください。';
+    if (btn) btn.style.display = 'none';
+  } else {
+    if (txt) txt.textContent = '通知を許可すると、コーチからのメッセージやリマインダーを受け取れます。';
+    if (btn) { btn.style.display = 'block'; btn.textContent = '通知を許可する'; }
+  }
+}
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { showToast('このブラウザは非対応です'); return; }
+  const perm = await Notification.requestPermission();
+  updateNotifStatusUI();
+  const banner = document.getElementById('notif-permission-banner');
+  if (banner) banner.style.display = 'none';
+  if (perm === 'granted') showToast('通知を許可しました');
+}
+function sendPushToPlayer(name, title, body) {
+  // Service Workerを通じたローカル通知（同端末のみ。クロスデバイスにはサーバー側VAPID対応が必要）
+  if (Notification.permission === 'granted' && swRegistration) {
+    swRegistration.showNotification(title, { body, icon: 'icon.png', badge: 'icon.png', tag: `msg-${name}` });
+  }
+}
+function scheduleCoachReminder() {
+  if (Notification.permission !== 'granted') return;
+  const now = new Date(new Date().getTime() + 9*60*60*1000);
+  const target = new Date(now);
+  target.setHours(21, 0, 0, 0);
+  if (now > target) target.setDate(target.getDate() + 1);
+  const ms = target - now;
+  setTimeout(() => {
+    if (swRegistration) {
+      swRegistration.showNotification('Prospect Forge', { body: '今日のトレーニング状況をご確認ください', icon: 'icon.png', tag: 'coach-reminder' });
+    }
+    scheduleCoachReminder(); // 翌日も
+  }, ms);
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast'); toast.textContent = msg; toast.style.opacity = 1; setTimeout(()=>{ toast.style.opacity = 0; }, 2500);
+}
+
+function setRankMode(mode) {
+  rankingMode = mode;
+  document.getElementById('btn-rank-daily').classList.toggle('active', mode === 'daily');
+  document.getElementById('btn-rank-alltime').classList.toggle('active', mode === 'alltime');
+  renderRanking();
+}
+
+async function submitReport() {
+  const w_pre = parseFloat(document.getElementById('f-weight').value) || ""; const bf_pre = parseFloat(document.getElementById('f-bf').value) || ""; const h_pre = parseFloat(document.getElementById('f-height').value) || "";
+  const prePayload = { height: h_pre, weight: w_pre, bf: bf_pre, bat: parseFloat(document.getElementById('f-bat').value) || "", pull: parseFloat(document.getElementById('f-pull').value) || "", b1: parseFloat(document.getElementById('f-b1').value) || "", s1: parseFloat(document.getElementById('f-s1').value) || "", d1: parseFloat(document.getElementById('f-d1').value) || "", chin: parseInt(document.getElementById('f-chin').value) || "", b10: parseFloat(document.getElementById('f-b10').value) || "", s10: parseFloat(document.getElementById('f-s10').value) || "", d10: parseFloat(document.getElementById('f-d10').value) || "", med: parseFloat(document.getElementById('f-med').value) || "", s10m: parseFloat(document.getElementById('f-10m').value) || "", s30m: parseFloat(document.getElementById('f-30m').value) || "", triple: parseFloat(document.getElementById('f-triple').value) || "" };
+  if (!validateFormInputs(prePayload)) return;
+  const btn = document.getElementById('btn-submit'); btn.disabled = true; btn.textContent = '送信中...';
+  let ffm = ""; let ffmi = ""; if(w_pre && bf_pre) { ffm = parseFloat((w_pre * (1 - bf_pre/100)).toFixed(2)); if(h_pre) ffmi = parseFloat((ffm / Math.pow(h_pre/100, 2)).toFixed(2)); }
+  const payload = { date: document.getElementById('f-date').value, name: currentUser.name, height: h_pre, weight: w_pre, bf: bf_pre, ffm: ffm, ffmi: ffmi, bat: prePayload.bat, pull: prePayload.pull, b1: prePayload.b1, s1: prePayload.s1, d1: prePayload.d1, chin: prePayload.chin, b10: prePayload.b10, s10: prePayload.s10, d10: prePayload.d10, med: prePayload.med, s10m: prePayload.s10m, s30m: prePayload.s30m, triple: prePayload.triple };
+  try {
+    const response = await fetch(GAS_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'report', payload: payload }) });
+    const result = await response.json();
+    if(result.ok || result.success) {
+      let existingIdx = reportsData.findIndex(r => r.name === payload.name && r.date === payload.date);
+      if (existingIdx !== -1) { for (let key in payload) { if (payload[key] !== "") reportsData[existingIdx][key] = payload[key]; } } else { reportsData.push(payload); }
+      const keys = ['height','weight','bf','ffm','ffmi','bat','pull','b1','s1','d1','chin','b10','s10','d10','med','s10m','s30m','triple'];
+      if(!allBestRecords[currentUser.name]) allBestRecords[currentUser.name] = {};
+      keys.forEach(k => {
+        let val = parseFloat(payload[k]); if(!isNaN(val)) {
+          let currentBest = allBestRecords[currentUser.name][k];
+          if(currentBest === undefined) { allBestRecords[currentUser.name][k] = val; } 
+          else { if(k==='s10m'||k==='s30m') { if(val < currentBest) allBestRecords[currentUser.name][k] = val; } else { if(val > currentBest) allBestRecords[currentUser.name][k] = val; } }
+        }
+      });
+      updateDashboard(); const toast = document.getElementById('toast'); toast.style.opacity = 1; setTimeout(()=>{ toast.style.opacity = 0; }, 2500);
+      document.querySelectorAll('#report-form input:not(#f-name):not(#f-date)').forEach(i => i.value = '');
+      document.getElementById('c-ffm').textContent = '-- kg'; document.getElementById('c-ffmi').textContent = '-- '; showScreen('dashboard');
+    } else { alert(result.message); }
+  } catch (error) { alert('送信に失敗しました。'); } finally { btn.disabled = false; btn.textContent = '報告を提出する'; }
+}
+
+function buildExportCheckboxGrid() {
+  const items = [{ id: 'height', label: '身長' }, { id: 'weight', label: '体重' }, { id: 'bf', label: '体脂肪率' }, { id: 'ffm', label: '除脂肪体重' }, { id: 'ffmi', label: '除脂肪指数' }, { id: 'bat', label: 'バットスピード' }, { id: 'pull', label: 'プルダウン' }, { id: 'b1', label: 'ベンチ1RM' }, { id: 's1', label: 'スクワット1RM' }, { id: 'd1', label: 'デッド1RM' }, { id: 'chin', label: '懸垂' }, { id: 'b10', label: 'ベンチ10RM' }, { id: 's10', label: 'スクワット10RM' }, { id: 'd10', label: 'デッド10RM' }, { id: 'med', label: 'メディシン投げ' }, { id: 's10m', label: '10m走' }, { id: 's30m', label: '30m走' }, { id: 'triple', label: '三段跳び' }];
+  const grid = document.getElementById('modal-chk-grid'); if (!grid) return;
+  grid.innerHTML = items.map(item => `<label class="chk-item"><input type="checkbox" value="${item.id}" data-label="${item.label}" checked><span>${item.label}</span></label>`).join('');
+}
+function setAllExportChecks(checked) {
+  document.querySelectorAll('#modal-chk-grid input[type="checkbox"]').forEach(cb => cb.checked = checked);
+}
+function openExportModal() { document.getElementById('export-modal').classList.add('active'); }
+function closeExportModal() { document.getElementById('export-modal').classList.remove('active'); }
+
+function formatExportValue(id, val) {
+  if (val === undefined || val === null || val === '') return '';
+  const num = parseFloat(val); if (isNaN(num)) return val;
+  if (id === 'ffm' || id === 'ffmi') return num.toFixed(1);
+  return val;
+}
+function executeCsvExport() {
+  const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked')); if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name; let myReports = reportsData.filter(r => r.name === targetName);
+  if (myReports.length === 0) { alert('エクスポート対象のデータがありません'); return; }
+  myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
+  let csvHeaders = ['日付', '氏名']; selectedBoxes.forEach(box => csvHeaders.push(box.getAttribute('data-label')));
+  let csvRows = [csvHeaders.join(',')];
+  myReports.forEach(r => {
+    let rowData = [r.date, r.name]; selectedBoxes.forEach(box => { rowData.push(formatExportValue(box.value, r[box.value])); }); csvRows.push(rowData.join(','));
+  });
+  const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob); link.setAttribute('download', `ForgeProspect_${targetName}_データ抽出.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); closeExportModal();
+}
+function executePdfExport() {
+  const selectedBoxes = Array.from(document.querySelectorAll('#modal-chk-grid input:checked')); if (selectedBoxes.length === 0) { alert('最低1つの種目を選択してください'); return; }
+  const targetName = currentUser.role === '指導者' ? selectedPlayerForCoach : currentUser.name; let myReports = reportsData.filter(r => r.name === targetName);
+  if (myReports.length === 0) { alert('出力対象のデータがありません'); return; }
+  myReports.sort((a,b) => new Date(a.date) - new Date(b.date));
+  const selectedIds = selectedBoxes.map(b => b.value); const selectedLabels = selectedBoxes.map(b => b.getAttribute('data-label'));
+  const printWin = window.open('', '_blank');
+  const rows = myReports.map(r => {
+    const cells = selectedIds.map(id => { const v = formatExportValue(id, r[id]); return `<td>${v !== '' ? v : '-'}</td>`; }).join('');
+    return `<tr><td>${r.date}</td><td>${r.name}</td>${cells}</tr>`;
+  }).join('');
+  const headerCells = selectedLabels.map(l => `<th>${l}</th>`).join('');
+  printWin.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>Prospect Forge - ${targetName}</title><style>body { font-family: sans-serif; font-size: 12px; padding: 20px; } h2 { margin-bottom: 8px; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: center; } th { background: #f0f0f0; font-weight: bold; } tr:nth-child(even) { background: #fafafa; }</style></head><body><h2>Prospect Forge — ${targetName} トレーニングデータ</h2><table><thead><tr><th>日付</th><th>氏名</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></body></html>`);
+  printWin.document.close(); printWin.focus(); setTimeout(() => { printWin.print(); printWin.close(); }, 300); closeExportModal();
+}
+function exportPDF() { window.print(); }
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(reg => { swRegistration = reg; }).catch(err => console.error('SW登録失敗:', err)); }); }
+</script>
+</body>
+</html>
