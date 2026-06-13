@@ -216,7 +216,7 @@
         <div class="comment-banner" onclick="showScreen('messages')">
           <div class="comment-banner-icon">💬</div>
           <div class="comment-banner-text">
-            <div class="comment-banner-title">指導者からのメッセージ</div>
+            <div class="comment-banner-title">新着メッセージ</div>
             <div class="comment-banner-sub" id="comment-banner-sub">タップして確認</div>
           </div>
           <div class="comment-banner-badge" id="comment-banner-badge">0</div>
@@ -309,10 +309,10 @@
       </div>
       <!-- 指導者用コメント送信カード -->
       <div class="card" id="coach-comment-card" style="display:none;">
-        <div class="card-title">💬 選手へのコメント</div>
+        <div class="card-title">💬 選手へのメッセージ</div>
         <div id="coach-comment-history" class="comment-list" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
         <div style="display:flex;gap:8px;align-items:flex-end;">
-          <textarea class="comment-textarea" id="coach-comment-input" placeholder="コメントを入力..."></textarea>
+          <textarea class="comment-textarea" id="coach-comment-input" placeholder="メッセージを入力..."></textarea>
           <button class="comment-send-btn" onclick="sendComment()">送信</button>
         </div>
       </div>
@@ -445,10 +445,62 @@
           <button class="notif-enable-btn" onclick="requestNotifPermission()">許可する</button>
         </div>
       </div>
+      <!-- 選手用：新規メッセージ -->
+      <div class="card" id="player-new-message-card" style="display:none;">
+        <div class="card-title">✉️ 指導者にメッセージを送る</div>
+        <div style="font-size:12px; color:var(--muted); margin-bottom:6px;">送信先の指導者</div>
+        <select class="filter-sel" id="player-coach-select" style="width:100%; padding:10px; font-size:14px; margin-bottom:10px;"></select>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea class="comment-textarea" id="player-new-message-input" placeholder="メッセージを入力..."></textarea>
+          <button class="comment-send-btn" onclick="sendNewMessageFromPlayer()">送信</button>
+        </div>
+      </div>
+      <!-- 指導者用：複数選手・グループへの一括送信 -->
+      <div class="card" id="coach-bulk-message-card" style="display:none;">
+        <div class="card-title">📢 まとめてメッセージを送る</div>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <button class="pdf-btn" style="flex:1;justify-content:center;" onclick="openBulkMessageModal('select')">👥 選手を選択して送信</button>
+          <button class="pdf-btn" style="flex:1;justify-content:center;" onclick="openBulkMessageModal('group')">🏷️ グループに送信</button>
+        </div>
+      </div>
       <div class="card">
-        <div class="card-title">💬 指導者からのメッセージ</div>
-        <div id="player-comment-list" class="comment-list">
+        <div class="card-title">💬 メッセージ</div>
+        <div id="thread-list" class="comment-list">
           <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">メッセージはありません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- スレッド詳細モーダル -->
+    <div class="modal-overlay" id="thread-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span id="thread-modal-title">💬 メッセージ</span>
+          <button class="close-modal-btn" onclick="closeThreadModal()">✕</button>
+        </div>
+        <div id="thread-modal-body" class="comment-list" style="max-height:380px; overflow-y:auto; margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea class="comment-textarea" id="thread-reply-input" placeholder="返信を入力..."></textarea>
+          <button class="comment-send-btn" id="thread-reply-btn" onclick="sendThreadReply()">送信</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 指導者用：一括メッセージモーダル -->
+    <div class="modal-overlay" id="bulk-message-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span id="bulk-message-title">📢 メッセージを送る</span>
+          <button class="close-modal-btn" onclick="closeBulkMessageModal()">✕</button>
+        </div>
+        <div id="bulk-message-target-area"></div>
+        <div style="margin-top:10px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">メッセージ内容</div>
+          <textarea class="comment-textarea" id="bulk-message-input" style="width:100%; min-height:80px;" placeholder="メッセージを入力..."></textarea>
+        </div>
+        <div class="modal-btn-row">
+          <button class="modal-btn-secondary" onclick="closeBulkMessageModal()">キャンセル</button>
+          <button class="submit-btn" style="flex:1; margin-top:0;" id="bulk-message-send-btn" onclick="submitBulkMessage()">送信する</button>
         </div>
       </div>
     </div>
@@ -609,10 +661,11 @@
 </div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxT4dEsupUI2tH8Zm-xkY9KoA5T9YnDU4IKm8KQLxPdMXxoZz-7qK8m_ugyB0_dnZxK/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzB1EDDIJubEeCQqGe77bAUYZf0eJXvUiAbz0N7maG01ggxpX_dKOzUtkChbTLy0XI/exec';
 
 let currentUser = null;
 let teamMembers = [];
+let coachesData = []; // 指導者の氏名一覧
 let reportsData = []; 
 let allBestRecords = {}; 
 let rankingMode = 'daily'; 
@@ -924,6 +977,7 @@ async function attemptLogin() {
     if(result.success || result.ok) {
       currentUser    = result.user;
       teamMembers    = result.members || [];
+      coachesData    = result.coaches || [];
       reportsData    = [];
       allBestRecords = {};
       appConfigMap   = result.config || {};
@@ -1205,10 +1259,10 @@ function showScreen(screenId) {
   if (navBtn) navBtn.classList.add('active');
   if (screenId === 'ranking') { populateRankGroupOptions(); renderRanking(); }
   if (screenId === 'profile') { updateProfile(); if (currentUser && currentUser.role === '指導者') renderCoachCommentHistory(); }
-  if (screenId === 'messages') { renderPlayerComments(); markCommentsRead(); }
+  if (screenId === 'messages') renderPlayerComments();
 }
 
-// ========== コメント機能 ==========
+// ========== メッセージ機能(スレッド形式) ==========
 async function loadComments() {
   try {
     const url = GAS_URL + '?action=getComments&name=' + encodeURIComponent(currentUser.name) + '&role=' + encodeURIComponent(currentUser.role);
@@ -1222,26 +1276,152 @@ async function loadComments() {
     } else {
       commentsData = [];
     }
+    // thread_idが無い古いデータへのフォールバック(idをthread_idとして扱う)
+    commentsData.forEach(c => { if (!c.thread_id) c.thread_id = c.id; });
     updateDashboard();
     if (currentUser.role === '指導者') renderCoachCommentHistory();
+    if (document.getElementById('screen-messages').classList.contains('active')) renderThreadList();
   } catch(e) { console.warn('コメント取得失敗:', e); }
 }
 
+// 自分が関わるメッセージを「相手 + thread_id」単位でスレッド化して返す
+// 指導者の場合は相手=選手、選手の場合は相手=指導者
+function buildThreads() {
+  const myName = currentUser.name;
+  const myMessages = commentsData.filter(c => c.from === myName || c.to === myName);
+  const threadMap = {}; // key = `${相手}__${thread_id}`
+  myMessages.forEach(c => {
+    const partner = c.from === myName ? c.to : c.from;
+    const key = `${partner}__${c.thread_id}`;
+    if (!threadMap[key]) threadMap[key] = { partner, thread_id: c.thread_id, messages: [] };
+    threadMap[key].messages.push(c);
+  });
+  const threads = Object.values(threadMap);
+  threads.forEach(t => t.messages.sort((a,b) => new Date(a.date) - new Date(b.date)));
+  threads.sort((a,b) => {
+    const aLast = a.messages[a.messages.length-1].date;
+    const bLast = b.messages[b.messages.length-1].date;
+    return new Date(bLast) - new Date(aLast);
+  });
+  return threads;
+}
+
+function renderThreadList() {
+  const el = document.getElementById('thread-list');
+  if (!el || !currentUser) return;
+  const threads = buildThreads();
+  el.innerHTML = threads.length ? threads.map(t => {
+    const last = t.messages[t.messages.length-1];
+    const unread = t.messages.filter(c => c.to === currentUser.name && !c.read).length;
+    const preview = last.body.length > 30 ? last.body.slice(0,30) + '…' : last.body;
+    return `<div class="comment-item" style="cursor:pointer;" onclick="openThreadModal('${t.partner}','${t.thread_id}')">
+      <div class="comment-item-header">
+        <span class="comment-item-from">${last.from === currentUser.name ? '→ ' : '📨 '}${t.partner}${unread > 0 ? ` <span style="background:var(--accent);color:var(--black);border-radius:8px;padding:1px 6px;font-size:10px;margin-left:4px;">${unread}</span>` : ''}</span>
+        <span class="comment-item-date">${last.date}</span>
+      </div>
+      <div class="comment-item-body">${preview}</div>
+    </div>`;
+  }).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">メッセージはありません</div>';
+  const banner = document.getElementById('notif-permission-banner');
+  if (banner) banner.style.display = Notification.permission === 'default' ? 'block' : 'none';
+}
+
+let activeThreadPartner = '';
+let activeThreadId = '';
+
+function openThreadModal(partner, threadId) {
+  activeThreadPartner = partner;
+  activeThreadId = threadId;
+  document.getElementById('thread-modal-title').textContent = `💬 ${partner}`;
+  renderThreadModalBody();
+  document.getElementById('thread-modal').classList.add('active');
+  // 開いたスレッドの未読を既読化
+  markThreadRead(partner, threadId);
+}
+function closeThreadModal() {
+  document.getElementById('thread-modal').classList.remove('active');
+  document.getElementById('thread-reply-input').value = '';
+}
+
+function renderThreadModalBody() {
+  const el = document.getElementById('thread-modal-body');
+  const myName = currentUser.name;
+  const messages = commentsData.filter(c =>
+    c.thread_id === activeThreadId && ((c.from === myName && c.to === activeThreadPartner) || (c.from === activeThreadPartner && c.to === myName))
+  ).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  el.innerHTML = messages.map(c => {
+    const isMine = c.from === myName;
+    return `<div class="comment-item" style="${isMine ? 'background:rgba(232,255,71,0.08);' : ''}">
+      <div class="comment-item-header">
+        <span class="comment-item-from">${isMine ? '自分' : c.from}</span>
+        <span class="comment-item-date">${c.date}</span>
+      </div>
+      <div class="comment-item-body">${c.body}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendThreadReply() {
+  const body = document.getElementById('thread-reply-input').value.trim();
+  if (!body || !activeThreadPartner) return;
+  const btn = document.getElementById('thread-reply-btn');
+  btn.disabled = true; btn.textContent = '送信中...';
+  const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
+  const comment = { from: currentUser.name, to: activeThreadPartner, body, date: nowJST.toISOString().replace('T',' ').slice(0,16), read: false, thread_id: activeThreadId };
+  try {
+    const result = await postWithRetry({ action:'sendComment', comment });
+    if (result.success) {
+      commentsData.push({ ...comment, id: result.id });
+      document.getElementById('thread-reply-input').value = '';
+      renderThreadModalBody();
+      renderThreadList();
+      if (currentUser.role === '指導者') renderCoachCommentHistory();
+      showToast('送信しました');
+      sendPushToPlayer(activeThreadPartner, 'メッセージが届きました', `${currentUser.name}からの返信があります`);
+    } else { showToast('送信に失敗しました'); }
+  } catch(e) { showToast('送信に失敗しました'); }
+  btn.disabled = false; btn.textContent = '送信';
+}
+
+// 選手が指導者に新規メッセージを送信(新規スレッド)
+async function sendNewMessageFromPlayer() {
+  const body = document.getElementById('player-new-message-input').value.trim();
+  const coach = document.getElementById('player-coach-select').value;
+  if (!body) return;
+  if (!coach) { alert('送信先の指導者を選択してください'); return; }
+  const btn = document.querySelector('#player-new-message-card .comment-send-btn');
+  btn.disabled = true; btn.textContent = '送信中...';
+  const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
+  const comment = { from: currentUser.name, to: coach, body, date: nowJST.toISOString().replace('T',' ').slice(0,16), read: false };
+  try {
+    const result = await postWithRetry({ action:'sendComment', comment });
+    if (result.success) {
+      commentsData.push({ ...comment, id: result.id, thread_id: result.id });
+      document.getElementById('player-new-message-input').value = '';
+      renderThreadList();
+      showToast('送信しました');
+    } else { showToast('送信に失敗しました'); }
+  } catch(e) { showToast('送信に失敗しました'); }
+  btn.disabled = false; btn.textContent = '送信';
+}
+
+// 個人票画面：指導者が選手に直接メッセージ(新規スレッド)
 async function sendComment() {
   const body = document.getElementById('coach-comment-input').value.trim();
   if (!body || !selectedPlayerForCoach) return;
-  const btn = document.querySelector('.comment-send-btn');
+  const btn = document.querySelector('#coach-comment-card .comment-send-btn');
   btn.disabled = true; btn.textContent = '送信中...';
   const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
   const comment = { from: currentUser.name, to: selectedPlayerForCoach, body, date: nowJST.toISOString().replace('T',' ').slice(0,16), read: false };
   try {
     const result = await postWithRetry({ action:'sendComment', comment });
     if (result.success) {
-      commentsData.push({ ...comment, id: result.id });
+      commentsData.push({ ...comment, id: result.id, thread_id: result.id });
       document.getElementById('coach-comment-input').value = '';
       renderCoachCommentHistory();
-      showToast('コメントを送信しました');
-      sendPushToPlayer(selectedPlayerForCoach, 'メッセージが届きました', `${currentUser.name}からのコメントがあります`);
+      showToast('メッセージを送信しました');
+      sendPushToPlayer(selectedPlayerForCoach, 'メッセージが届きました', `${currentUser.name}からのメッセージがあります`);
     } else { showToast('送信に失敗しました'); }
   } catch(e) { showToast('送信に失敗しました'); }
   btn.disabled = false; btn.textContent = '送信';
@@ -1250,33 +1430,53 @@ async function sendComment() {
 function renderCoachCommentHistory() {
   const el = document.getElementById('coach-comment-history');
   if (!el || !selectedPlayerForCoach) return;
-  const list = commentsData.filter(c => c.to === selectedPlayerForCoach).slice().reverse();
-  el.innerHTML = list.length ? list.map(c => `
-    <div class="comment-item">
+  const myName = currentUser.name;
+  const list = commentsData.filter(c =>
+    (c.from === myName && c.to === selectedPlayerForCoach) || (c.from === selectedPlayerForCoach && c.to === myName)
+  ).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  el.innerHTML = list.length ? list.map(c => {
+    const isMine = c.from === myName;
+    return `<div class="comment-item" style="${isMine ? 'background:rgba(232,255,71,0.08);' : ''}">
       <div class="comment-item-header">
-        <span class="comment-item-from">→ ${c.to}</span>
+        <span class="comment-item-from">${isMine ? '→ ' + c.to : '📨 ' + c.from}</span>
         <span class="comment-item-date">${c.date}</span>
       </div>
       <div class="comment-item-body">${c.body}</div>
-    </div>`).join('') : '<div style="font-size:12px;color:var(--muted);padding:4px 0;">この選手へのコメントはまだありません</div>';
+    </div>`;
+  }).join('') : '<div style="font-size:12px;color:var(--muted);padding:4px 0;">この選手とのメッセージはまだありません</div>';
 }
 
+// スレッド一覧画面表示時の初期化(選手側フォーム表示・指導者一覧セット等)
 function renderPlayerComments() {
-  const el = document.getElementById('player-comment-list');
-  if (!el || !currentUser) return;
-  const list = commentsData.filter(c => c.to === currentUser.name).slice().reverse();
-  el.innerHTML = list.length ? list.map(c => `
-    <div class="comment-item">
-      <div class="comment-item-header">
-        <span class="comment-item-from">📨 ${c.from}</span>
-        <span class="comment-item-date">${c.date}</span>
-      </div>
-      <div class="comment-item-body">${c.body}</div>
-    </div>`).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">メッセージはありません</div>';
+  if (!currentUser) return;
+  if (currentUser.role !== '指導者') {
+    document.getElementById('player-new-message-card').style.display = 'block';
+    const sel = document.getElementById('player-coach-select');
+    sel.innerHTML = coachesData.map(c => `<option value="${c}">${c}</option>`).join('');
+  } else {
+    document.getElementById('player-new-message-card').style.display = 'none';
+    document.getElementById('coach-bulk-message-card').style.display = 'block';
+  }
+  renderThreadList();
   const banner = document.getElementById('notif-permission-banner');
   if (banner) banner.style.display = Notification.permission === 'default' ? 'block' : 'none';
 }
 
+// 開いたスレッドのうち自分宛の未読を既読化
+async function markThreadRead(partner, threadId) {
+  const myName = currentUser.name;
+  const targets = commentsData.filter(c => c.to === myName && c.thread_id === threadId && c.from === partner && !c.read);
+  if (targets.length === 0) return;
+  targets.forEach(c => c.read = true);
+  renderThreadList();
+  updateDashboard();
+  try {
+    await fetch(GAS_URL, { method:'POST', mode:'cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'markRead', name: myName }) });
+  } catch(e) {}
+}
+
+// 全未読を既読化(ダッシュボードバナー等から呼ばれる)
 async function markCommentsRead() {
   commentsData.forEach(c => { if (c.to === currentUser.name) c.read = true; });
   document.getElementById('comment-banner-wrap').style.display = 'none';
@@ -1324,14 +1524,87 @@ async function sendUrgeMessages() {
   try {
     const result = await postWithRetry({ action:'sendUrge', from: currentUser.name, targets, body, date });
     if (result.success) {
-      targets.forEach(name => {
-        commentsData.push({ from: currentUser.name, to: name, body: `【催促】${body}`, date, read: false });
+      targets.forEach((name, idx) => {
+        const id = (result.ids && result.ids[idx]) || `urge_${Date.now()}_${idx}`;
+        commentsData.push({ id, from: currentUser.name, to: name, body: `【催促】${body}`, date, read: false, thread_id: id });
         sendPushToPlayer(name, 'トレーニング報告のお願い', body);
       });
+      renderThreadList();
       showToast(`${targets.length}人に送信しました`);
       closeUrgeModal();
     } else { showToast('送信に失敗しました'); }
   } catch(e) { showToast('送信に失敗しました'); }
+  btn.disabled = false; btn.textContent = '送信する';
+}
+
+// ========== 一括メッセージ送信(指導者用) ==========
+let bulkMessageMode = ''; // 'select' or 'group'
+
+function openBulkMessageModal(mode) {
+  bulkMessageMode = mode;
+  const area = document.getElementById('bulk-message-target-area');
+  if (mode === 'select') {
+    document.getElementById('bulk-message-title').textContent = '📢 選手を選択して送信';
+    area.innerHTML = `
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;">
+        <span>送信する選手を選択</span>
+        <span style="display:flex;gap:8px;">
+          <button class="select-link-btn" onclick="setAllBulkTargetChecks(true)">全選択</button>
+          <button class="select-link-btn" onclick="setAllBulkTargetChecks(false)">全選択解除</button>
+        </span>
+      </div>
+      <div id="bulk-target-list" style="display:flex; flex-direction:column; gap:6px; max-height:240px; overflow-y:auto; padding:4px;">
+        ${teamMembers.map(name => `<label class="group-member-chk"><input type="checkbox" class="bulk-target-chk" value="${name}"><span>${name}</span></label>`).join('')}
+      </div>`;
+  } else {
+    document.getElementById('bulk-message-title').textContent = '🏷️ グループに送信';
+    if (groupsData.length === 0) {
+      area.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:8px 0;">グループがありません。先にアカウント画面でグループを作成してください。</div>`;
+    } else {
+      area.innerHTML = `
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">送信先のグループ</div>
+        <select class="filter-sel" id="bulk-group-select" style="width:100%; padding:10px; font-size:14px;">
+          ${groupsData.map(g => `<option value="${g.group_id}">${g.group_name}（${g.members.length}人）</option>`).join('')}
+        </select>`;
+    }
+  }
+  document.getElementById('bulk-message-input').value = '';
+  document.getElementById('bulk-message-modal').classList.add('active');
+}
+function closeBulkMessageModal() { document.getElementById('bulk-message-modal').classList.remove('active'); }
+function setAllBulkTargetChecks(checked) {
+  document.querySelectorAll('.bulk-target-chk').forEach(cb => cb.checked = checked);
+}
+
+async function submitBulkMessage() {
+  const body = document.getElementById('bulk-message-input').value.trim();
+  if (!body) { alert('メッセージを入力してください'); return; }
+  let targets = [];
+  if (bulkMessageMode === 'select') {
+    targets = Array.from(document.querySelectorAll('.bulk-target-chk:checked')).map(el => el.value);
+    if (targets.length === 0) { alert('送信先を選択してください'); return; }
+  } else {
+    const groupId = document.getElementById('bulk-group-select').value;
+    const group = groupsData.find(g => g.group_id === groupId);
+    if (!group) { alert('グループを選択してください'); return; }
+    targets = group.members;
+  }
+  const btn = document.getElementById('bulk-message-send-btn'); btn.disabled = true; btn.textContent = '送信中...';
+  const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
+  const date = nowJST.toISOString().replace('T',' ').slice(0,16);
+  try {
+    const result = await postWithRetry({ action:'sendComment', comment: { from: currentUser.name, to: targets, body, date, read: false } });
+    if (result.success) {
+      targets.forEach((name, idx) => {
+        const id = (result.ids && result.ids[idx]) || `bulk_${Date.now()}_${idx}`;
+        commentsData.push({ id, from: currentUser.name, to: name, body, date, read: false, thread_id: id });
+        sendPushToPlayer(name, 'メッセージが届きました', `${currentUser.name}からのメッセージがあります`);
+      });
+      renderThreadList();
+      showToast(`${targets.length}人に送信しました`);
+      closeBulkMessageModal();
+    } else { alert(result.message || '送信に失敗しました'); }
+  } catch(e) { alert('送信に失敗しました。'); }
   btn.disabled = false; btn.textContent = '送信する';
 }
 
