@@ -126,7 +126,7 @@
   .select-link-btn { background: none; border: none; color: var(--accent2); font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
   .vbt-exercise-card { background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px; }
   .vbt-exercise-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
-  .vbt-input-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .vbt-input-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
   .vbt-input-row .form-group { display: flex; flex-direction: column; gap: 4px; }
   .other-ex-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; }
   .other-ex-row .form-group { display: flex; flex-direction: column; gap: 4px; }
@@ -140,6 +140,11 @@
   .group-list-item { display: flex; justify-content: space-between; align-items: center; background: var(--dark-gray); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
   .group-list-item-name { font-size: 14px; font-weight: 700; color: #eef; }
   .group-list-item-members { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .progress-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .progress-table th, .progress-table td { padding: 6px 8px; text-align: center; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  .progress-table th { color: var(--muted); font-weight: 600; background: var(--dark-gray); position: sticky; top: 0; }
+  .progress-table td.progress-date { color: #eef; font-weight: 600; text-align: left; }
+  .progress-table td.progress-exercise { text-align: left; color: var(--accent); font-weight: 600; }
   @media (max-width: 480px) {
     body { padding: 10px; }
     .form-grid { grid-template-columns: 1fr; gap: 10px; }
@@ -309,8 +314,25 @@
       </div>
       <!-- 指導者用コメント送信カード -->
       <div class="card" id="coach-comment-card" style="display:none;">
-        <div class="card-title">💬 選手へのメッセージ</div>
-        <div id="coach-comment-history" class="comment-list" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>💬 選手へのメッセージ</span>
+          <button class="select-link-btn" onclick="toggleCoachMultiSend()" id="coach-multi-toggle-btn">複数選手にまとめて送信</button>
+        </div>
+        <!-- 単一選手モード(デフォルト) -->
+        <div id="coach-single-send-area">
+          <div id="coach-comment-history" class="comment-list" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+        </div>
+        <!-- 複数選手選択モード -->
+        <div id="coach-multi-send-area" style="display:none;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;">
+            <span>送信する選手を選択</span>
+            <span style="display:flex;gap:8px;">
+              <button class="select-link-btn" onclick="setAllCoachMultiChecks(true)">全選択</button>
+              <button class="select-link-btn" onclick="setAllCoachMultiChecks(false)">全選択解除</button>
+            </span>
+          </div>
+          <div id="coach-multi-target-list" style="display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; padding:4px; margin-bottom:10px;"></div>
+        </div>
         <div style="display:flex;gap:8px;align-items:flex-end;">
           <textarea class="comment-textarea" id="coach-comment-input" placeholder="メッセージを入力..."></textarea>
           <button class="comment-send-btn" onclick="sendComment()">送信</button>
@@ -340,6 +362,16 @@
       <div class="profile-container">
         <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; padding-left:4px;" id="profile-grid-title">各種目の歴代最高データ</div>
         <div id="metric-list-container"></div>
+      </div>
+      <!-- VBT成長推移 -->
+      <div class="card" id="vbt-progress-card" style="display:none;">
+        <div class="card-title">⚡ VBT成長推移(直近30日)</div>
+        <div id="vbt-progress-body" style="overflow-x:auto;"></div>
+      </div>
+      <!-- その他種目成長推移 -->
+      <div class="card" id="other-ex-progress-card" style="display:none;">
+        <div class="card-title">➕ その他の種目 成長推移(直近30日)</div>
+        <div id="other-ex-progress-body" style="overflow-x:auto;"></div>
       </div>
     </div>
     <div class="screen" id="screen-report">
@@ -661,13 +693,15 @@
 </div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzB1EDDIJubEeCQqGe77bAUYZf0eJXvUiAbz0N7maG01ggxpX_dKOzUtkChbTLy0XI/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzFiQm-XNeP82pVT29UosUnnr7ODrE7L7QVVvvSsAuUIMT-POPOpzQhJrAlKcCzDZbT/exec';
 
 let currentUser = null;
 let teamMembers = [];
 let coachesData = []; // 指導者の氏名一覧
 let reportsData = []; 
 let allBestRecords = {}; 
+let vbtData = []; // VBTログ(直近30日)
+let otherExData = []; // その他種目ログ(直近30日)
 let rankingMode = 'daily'; 
 let selectedPlayerForCoach = null; 
 let activeChartMetric = null; 
@@ -835,14 +869,25 @@ function renderInlineChart(metricId) {
     let rangeDays = parseInt(activeChartRange);
     for (let i = rangeDays - 1; i >= 0; i--) { dates.push(new Date(nowJST.getTime() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]); }
   }
+  // 総合指数(composite)は b10/s10/d10/chin の重み付き合計をその日の入力値から算出
+  const getMetricValue = (r) => {
+    if (metricId === 'composite') {
+      const b10 = parseFloat(r['b10']), s10 = parseFloat(r['s10']), d10 = parseFloat(r['d10']), chin = parseFloat(r['chin']);
+      if (isNaN(b10) && isNaN(s10) && isNaN(d10) && isNaN(chin)) return null;
+      return (b10||0)*1.5625 + (s10||0)*0.8333333 + (d10||0)*0.75 + (chin||0)*5;
+    }
+    return (r[metricId] !== "" && r[metricId] !== undefined) ? parseFloat(r[metricId]) : null;
+  };
   const playerData = dates.map(date => {
     const r = reportsData.find(r => r.name === targetName && r.date === date);
-    return (r && r[metricId] !== "" && r[metricId] !== undefined) ? parseFloat(r[metricId]) : null;
+    if (!r) return null;
+    const v = getMetricValue(r);
+    return v !== null ? parseFloat(v.toFixed(1)) : null;
   });
   const teamAvgData = dates.map(date => {
-    const dailyReports = reportsData.filter(r => r.date === date && r[metricId] !== "" && r[metricId] !== undefined);
+    const dailyReports = reportsData.filter(r => r.date === date).map(r => ({ r, v: getMetricValue(r) })).filter(x => x.v !== null);
     if (dailyReports.length === 0) return null;
-    return parseFloat((dailyReports.reduce((acc, r) => acc + parseFloat(r[metricId]), 0) / dailyReports.length).toFixed(2));
+    return parseFloat((dailyReports.reduce((acc, x) => acc + x.v, 0) / dailyReports.length).toFixed(2));
   });
   const currentMetricConfig = effectiveConfigMap(targetName)[metricId] || {};
   const targetVal = (currentMetricConfig && currentMetricConfig.target != null) ? currentMetricConfig.target : null;
@@ -900,6 +945,8 @@ function updateProfile() {
   document.getElementById('prof-total-score').textContent = `総合指数: ${totalScore.toFixed(1)}点`;
   document.getElementById('prof-sub-id').textContent = `身長 ${latestHeight}cm / ${rankDescStr}`;
   const metrics = [
+    { id: 'composite', label: '総合指数', val: totalScore ? totalScore.toFixed(1) + '点' : '--', stag: false, raw: totalScore || null },
+    { id: 'weight', label: '体重', val: latestWeight !== '--' ? latestWeight + 'kg' : '--', stag: false, raw: latestWeight !== '--' ? parseFloat(latestWeight) : null },
     { id: 'ffm', label: '除脂肪体重', val: getBest('ffm') ? getBest('ffm').toFixed(1) + 'kg' : '--', stag: isStagnantCustomDays('ffm'), raw: getBest('ffm') },
     { id: 'ffmi', label: '除脂肪指数', val: getBest('ffmi') ? getBest('ffmi').toFixed(1) : '--', stag: isStagnantCustomDays('ffmi'), raw: getBest('ffmi') },
     { id: 'b10', label: 'ベンチ 10RM', val: getBest('b10') ? getBest('b10') + 'kg' : '--', stag: isStagnantCustomDays('b10'), raw: getBest('b10') },
@@ -947,6 +994,62 @@ function updateProfile() {
       </div>`;
   }).join('');
   if (activeChartMetric) renderInlineChart(activeChartMetric);
+  renderVbtProgress(targetName);
+  renderOtherExProgress(targetName);
+}
+
+// VBT成長推移表：種目別に日付×重さ・速度・レップ数を表示
+function renderVbtProgress(targetName) {
+  const card = document.getElementById('vbt-progress-card');
+  const body = document.getElementById('vbt-progress-body');
+  if (!targetName) { card.style.display = 'none'; return; }
+  const myLogs = vbtData.filter(v => v.name === targetName).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (myLogs.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const exercises = Array.from(new Set(myLogs.map(v => v.exercise)));
+  body.innerHTML = exercises.map(ex => {
+    const rows = myLogs.filter(v => v.exercise === ex).map(v => {
+      const w    = (v.weight   !== '' && v.weight   !== undefined) ? `${v.weight}kg`   : '-';
+      const vel  = (v.velocity !== '' && v.velocity !== undefined) ? `${v.velocity}m/s` : '-';
+      const reps = (v.reps    !== '' && v.reps    !== undefined) ? `${v.reps}回`      : '-';
+      const sets = (v.sets    !== '' && v.sets    !== undefined) ? `${v.sets}セット`  : '-';
+      const setNum = (v.set !== '' && v.set !== undefined && v.set !== 0) ? `S${v.set}` : '';
+      return `<tr><td class="progress-date">${v.date}${setNum ? ` <span style="color:var(--muted);font-size:10px;">${setNum}</span>` : ''}</td><td>${w}</td><td>${vel}</td><td>${reps}</td><td>${sets}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;">${ex}</div>
+      <table class="progress-table">
+        <thead><tr><th>日付</th><th>重さ</th><th>速さ</th><th>レップ数</th><th>セット数</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+// その他種目成長推移表：種目別に日付×重さ・レップ数を表示
+function renderOtherExProgress(targetName) {
+  const card = document.getElementById('other-ex-progress-card');
+  const body = document.getElementById('other-ex-progress-body');
+  if (!targetName) { card.style.display = 'none'; return; }
+  const myLogs = otherExData.filter(o => o.name === targetName).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (myLogs.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  // 種目名は自由記述のため表記揺れがあり得るが、まずは入力された文字列のまま完全一致でグループ化する
+  const exercises = Array.from(new Set(myLogs.map(o => o.exercise)));
+  body.innerHTML = exercises.map(ex => {
+    const rows = myLogs.filter(o => o.exercise === ex).map(o => {
+      const w = (o.weight !== '' && o.weight !== undefined) ? `${o.weight}kg` : '-';
+      const reps = (o.reps !== '' && o.reps !== undefined) ? `${o.reps}回` : '-';
+      return `<tr><td class="progress-date">${o.date}</td><td>${w}</td><td>${reps}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;">${ex}</div>
+      <table class="progress-table">
+        <thead><tr><th>日付</th><th>重さ</th><th>レップ数</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
 }
 
 async function attemptLogin() {
@@ -1016,6 +1119,8 @@ async function loadReportsInBackground() {
       allBestRecords = result.bestRecords || {};
       groupsData       = result.groups || groupsData;
       groupSettingsData = result.groupSettings || groupSettingsData;
+      vbtData       = result.vbtLogs || vbtData;
+      otherExData   = result.otherExLogs || otherExData;
       // 画面を再描画
       updateDashboard();
       if(document.getElementById('screen-profile').classList.contains('active')) updateProfile();
@@ -1116,6 +1221,7 @@ function handleCoachPlayerChange() {
   activeChartMetric = null; 
   updateProfile();
   renderCoachCommentHistory();
+  if (coachMultiSendMode) renderCoachMultiTargetList();
 }
 
 function forceLogout() {
@@ -1187,23 +1293,54 @@ function renderTodayReportsDetail() {
   const nowJST = new Date(new Date().getTime() + (9 * 60 * 60 * 1000));
   const todayStr = nowJST.toISOString().split('T')[0];
   const todayReports = reportsData.filter(r => r.date === todayStr);
+  const todayVbt = vbtData.filter(r => r.date === todayStr);
+  const todayOther = otherExData.filter(r => r.date === todayStr);
   const list = document.getElementById('today-detail-list');
-  if (todayReports.length === 0) {
+
+  // 通常報告・VBT・その他種目のいずれかを報告した人を名前でまとめる
+  const names = new Set([
+    ...todayReports.map(r => r.name),
+    ...todayVbt.map(r => r.name),
+    ...todayOther.map(r => r.name)
+  ]);
+
+  if (names.size === 0) {
     list.innerHTML = `<div class="card"><div style="text-align:center;color:var(--muted);font-size:13px;padding:8px 0;">本日の報告はまだありません</div></div>`;
     return;
   }
-  list.innerHTML = todayReports.map(r => {
-    const rows = EXPORT_ITEMS.map(item => {
+
+  list.innerHTML = Array.from(names).map(name => {
+    const r = todayReports.find(rr => rr.name === name);
+    const rows = r ? EXPORT_ITEMS.map(item => {
       const v = r[item.id];
       if (v === undefined || v === null || v === '') return '';
       const unitKey = Object.keys(eventMap).find(k => eventMap[k] === item.id);
       const unit = unitKey ? (units[unitKey] || '') : '';
       const displayVal = (item.id === 'ffm' || item.id === 'ffmi') ? parseFloat(v).toFixed(1) : v;
       return `<div class="today-detail-item"><span class="today-detail-label">${item.label}</span><span class="today-detail-val">${displayVal}${unit}</span></div>`;
-    }).filter(Boolean).join('');
+    }).filter(Boolean).join('') : '';
+
+    // VBT
+    const vbtRows = todayVbt.filter(v => v.name === name).map(v => {
+      const parts = [];
+      if (v.weight !== '' && v.weight !== undefined) parts.push(`${v.weight}kg`);
+      if (v.velocity !== '' && v.velocity !== undefined) parts.push(`${v.velocity}m/s`);
+      if (v.reps !== '' && v.reps !== undefined) parts.push(`${v.reps}回`);
+      return `<div class="today-detail-item"><span class="today-detail-label">⚡${v.exercise}</span><span class="today-detail-val">${parts.join(' / ')}</span></div>`;
+    }).join('');
+
+    // その他種目
+    const otherRows = todayOther.filter(o => o.name === name).map(o => {
+      const parts = [];
+      if (o.weight !== '' && o.weight !== undefined) parts.push(`${o.weight}kg`);
+      if (o.reps !== '' && o.reps !== undefined) parts.push(`${o.reps}回`);
+      return `<div class="today-detail-item"><span class="today-detail-label">➕${o.exercise}</span><span class="today-detail-val">${parts.join(' / ')}</span></div>`;
+    }).join('');
+
+    const allRows = rows + vbtRows + otherRows;
     return `<div class="card" style="margin-bottom:8px;">
-      <div class="card-title" style="margin-bottom:8px;">${r.name}</div>
-      <div class="today-detail-grid">${rows || '<div style="color:var(--muted);font-size:12px;">数値の報告はありません</div>'}</div>
+      <div class="card-title" style="margin-bottom:8px;">${name}</div>
+      <div class="today-detail-grid">${allRows || '<div style="color:var(--muted);font-size:12px;">数値の報告はありません</div>'}</div>
     </div>`;
   }).join('');
 }
@@ -1407,13 +1544,56 @@ async function sendNewMessageFromPlayer() {
 }
 
 // 個人票画面：指導者が選手に直接メッセージ(新規スレッド)
+let coachMultiSendMode = false;
+
+function toggleCoachMultiSend() {
+  coachMultiSendMode = !coachMultiSendMode;
+  document.getElementById('coach-single-send-area').style.display = coachMultiSendMode ? 'none' : 'block';
+  document.getElementById('coach-multi-send-area').style.display = coachMultiSendMode ? 'block' : 'none';
+  document.getElementById('coach-multi-toggle-btn').textContent = coachMultiSendMode ? 'この選手だけに送信' : '複数選手にまとめて送信';
+  if (coachMultiSendMode) renderCoachMultiTargetList();
+}
+function setAllCoachMultiChecks(checked) {
+  document.querySelectorAll('.coach-multi-chk').forEach(cb => cb.checked = checked);
+}
+function renderCoachMultiTargetList() {
+  const wrap = document.getElementById('coach-multi-target-list');
+  wrap.innerHTML = teamMembers.map(name => {
+    const checked = name === selectedPlayerForCoach ? 'checked' : '';
+    return `<label class="group-member-chk"><input type="checkbox" class="coach-multi-chk" value="${name}" ${checked}><span>${name}</span></label>`;
+  }).join('');
+}
+
 async function sendComment() {
   const body = document.getElementById('coach-comment-input').value.trim();
-  if (!body || !selectedPlayerForCoach) return;
+  if (!body) return;
   const btn = document.querySelector('#coach-comment-card .comment-send-btn');
   btn.disabled = true; btn.textContent = '送信中...';
   const nowJST = new Date(new Date().getTime() + 9*60*60*1000);
-  const comment = { from: currentUser.name, to: selectedPlayerForCoach, body, date: nowJST.toISOString().replace('T',' ').slice(0,16), read: false };
+  const date = nowJST.toISOString().replace('T',' ').slice(0,16);
+
+  if (coachMultiSendMode) {
+    const targets = Array.from(document.querySelectorAll('.coach-multi-chk:checked')).map(el => el.value);
+    if (targets.length === 0) { showToast('送信先を選択してください'); btn.disabled = false; btn.textContent = '送信'; return; }
+    try {
+      const result = await postWithRetry({ action:'sendComment', comment: { from: currentUser.name, to: targets, body, date, read: false } });
+      if (result.success) {
+        targets.forEach((name, idx) => {
+          const id = (result.ids && result.ids[idx]) || `multi_${Date.now()}_${idx}`;
+          commentsData.push({ id, from: currentUser.name, to: name, body, date, read: false, thread_id: id });
+          sendPushToPlayer(name, 'メッセージが届きました', `${currentUser.name}からのメッセージがあります`);
+        });
+        document.getElementById('coach-comment-input').value = '';
+        showToast(`${targets.length}人に送信しました`);
+        if (document.getElementById('screen-messages').classList.contains('active')) renderThreadList();
+      } else { showToast('送信に失敗しました'); }
+    } catch(e) { showToast('送信に失敗しました'); }
+    btn.disabled = false; btn.textContent = '送信';
+    return;
+  }
+
+  if (!selectedPlayerForCoach) { btn.disabled = false; btn.textContent = '送信'; return; }
+  const comment = { from: currentUser.name, to: selectedPlayerForCoach, body, date, read: false };
   try {
     const result = await postWithRetry({ action:'sendComment', comment });
     if (result.success) {
@@ -1894,19 +2074,44 @@ const VBT_EXERCISES = [
   { key: 'deadlift', label: 'デッドリフト' },
   { key: 'squat', label: 'スクワット' }
 ];
+// 各種目のセット入力状態を管理: { exKey: setCount }
+const vbtSetCount = {};
+
 function openVbtModal() {
+  VBT_EXERCISES.forEach(ex => { vbtSetCount[ex.key] = 1; });
   const body = document.getElementById('vbt-form-body');
   body.innerHTML = VBT_EXERCISES.map(ex => `
-    <div class="vbt-exercise-card">
+    <div class="vbt-exercise-card" id="vbt-card-${ex.key}">
       <div class="vbt-exercise-title">${ex.label}</div>
-      <div class="vbt-input-row">
-        <div class="form-group"><label class="form-label">重さ (kg)</label><input type="number" class="form-input" id="vbt-${ex.key}-weight" step="0.5"></div>
-        <div class="form-group"><label class="form-label">速さ (m/s)</label><input type="number" class="form-input" id="vbt-${ex.key}-velocity" step="0.01"></div>
-        <div class="form-group"><label class="form-label">レップ数</label><input type="number" class="form-input" id="vbt-${ex.key}-reps" step="1"></div>
+      <div id="vbt-sets-${ex.key}">
+        ${buildVbtSetRow(ex.key, 1)}
       </div>
+      <button class="select-link-btn" style="margin-top:8px;" onclick="addVbtSet('${ex.key}')">＋ 次のセットを入力する</button>
     </div>`).join('');
   document.getElementById('vbt-modal').classList.add('active');
 }
+
+function buildVbtSetRow(exKey, setNum) {
+  return `<div id="vbt-set-${exKey}-${setNum}" style="margin-bottom:10px;">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;">セット${setNum}</div>
+    <div class="vbt-input-row">
+      <div class="form-group"><label class="form-label">重さ(kg)</label><input type="number" class="form-input" id="vbt-${exKey}-${setNum}-weight" step="0.5"></div>
+      <div class="form-group"><label class="form-label">速さ(m/s)</label><input type="number" class="form-input" id="vbt-${exKey}-${setNum}-velocity" step="0.01"></div>
+      <div class="form-group"><label class="form-label">レップ数</label><input type="number" class="form-input" id="vbt-${exKey}-${setNum}-reps" step="1"></div>
+      <div class="form-group"><label class="form-label">セット数</label><input type="number" class="form-input" id="vbt-${exKey}-${setNum}-sets" step="1" value="${setNum}"></div>
+    </div>
+  </div>`;
+}
+
+function addVbtSet(exKey) {
+  vbtSetCount[exKey]++;
+  const setNum = vbtSetCount[exKey];
+  const container = document.getElementById(`vbt-sets-${exKey}`);
+  const div = document.createElement('div');
+  div.innerHTML = buildVbtSetRow(exKey, setNum);
+  container.appendChild(div.firstElementChild);
+}
+
 function closeVbtModal() { document.getElementById('vbt-modal').classList.remove('active'); }
 
 async function submitVbtReport() {
@@ -1914,14 +2119,25 @@ async function submitVbtReport() {
   if (!date) { alert('日付を入力してください(報告フォーム上部)'); return; }
   const entries = [];
   VBT_EXERCISES.forEach(ex => {
-    const weight = parseFloat(document.getElementById(`vbt-${ex.key}-weight`).value);
-    const velocity = parseFloat(document.getElementById(`vbt-${ex.key}-velocity`).value);
-    const reps = parseInt(document.getElementById(`vbt-${ex.key}-reps`).value);
-    if (!isNaN(weight) || !isNaN(velocity) || !isNaN(reps)) {
-      entries.push({ exercise: ex.label, weight: isNaN(weight) ? '' : weight, velocity: isNaN(velocity) ? '' : velocity, reps: isNaN(reps) ? '' : reps });
+    for (let s = 1; s <= vbtSetCount[ex.key]; s++) {
+      const weight   = parseFloat(document.getElementById(`vbt-${ex.key}-${s}-weight`)?.value);
+      const velocity = parseFloat(document.getElementById(`vbt-${ex.key}-${s}-velocity`)?.value);
+      const reps     = parseInt(document.getElementById(`vbt-${ex.key}-${s}-reps`)?.value);
+      const sets     = parseInt(document.getElementById(`vbt-${ex.key}-${s}-sets`)?.value);
+      // 何かひとつでも入力があれば送信対象
+      if (!isNaN(weight) || !isNaN(velocity) || !isNaN(reps)) {
+        entries.push({
+          exercise: ex.label,
+          set: s,
+          weight:   isNaN(weight)   ? '' : weight,
+          velocity: isNaN(velocity) ? '' : velocity,
+          reps:     isNaN(reps)     ? '' : reps,
+          sets:     isNaN(sets)     ? '' : sets
+        });
+      }
     }
   });
-  if (entries.length === 0) { alert('少なくとも1種目は入力してください'); return; }
+  if (entries.length === 0) { alert('少なくとも1セット入力してください'); return; }
   const btn = document.getElementById('vbt-submit-btn'); btn.disabled = true; btn.textContent = '送信中...';
   try {
     const result = await postWithRetry({ action: 'vbtReport', name: currentUser.name, date, entries });
